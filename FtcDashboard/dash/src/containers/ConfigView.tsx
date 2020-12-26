@@ -3,7 +3,12 @@ import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 
 import CustomVariable from './CustomVariable';
-import BaseView, { BaseViewHeading, BaseViewBody } from './BaseView';
+import BaseView, {
+  BaseViewProps,
+  BaseViewHeading,
+  BaseViewBody,
+  BaseViewHeadingProps,
+} from './BaseView';
 import { ReactComponent as SaveSVG } from '../assets/icons/save.svg';
 import { ReactComponent as RefreshSVG } from '../assets/icons/refresh.svg';
 
@@ -15,15 +20,13 @@ import {
 } from '../actions/config';
 import VariableType from '../enums/VariableType';
 
-interface ConfigViewProps {
+type ConfigViewProps = {
   configRoot?: any;
   onRefresh?: any;
   onSave?: any;
   onChange?: any;
-
-  isDraggable?: boolean;
-  isUnlocked?: boolean;
-}
+} & BaseViewProps &
+  BaseViewHeadingProps;
 
 const ConfigView: FunctionComponent<ConfigViewProps> = ({
   configRoot,

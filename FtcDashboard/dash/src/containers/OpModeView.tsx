@@ -8,13 +8,18 @@ import { initOpMode, startOpMode, stopOpMode } from '../actions/opmode';
 import OpModeStatus from '../enums/OpModeStatus';
 import Icon from '../components/Icon';
 import IconGroup from '../components/IconGroup';
-import BaseView, { BaseViewHeading, BaseViewBody } from './BaseView';
+import BaseView, {
+  BaseViewProps,
+  BaseViewHeading,
+  BaseViewBody,
+  BaseViewHeadingProps,
+} from './BaseView';
 
 interface OpModeViewState {
   selectedOpMode: string;
 }
 
-interface OpModeViewProps {
+type OpModeViewProps = {
   available: boolean;
   activeOpMode: string;
   activeOpModeStatus: any;
@@ -24,10 +29,8 @@ interface OpModeViewProps {
   dispatch: any;
   gamepad1Connected: boolean;
   gamepad2Connected: boolean;
-
-  isDraggable: boolean;
-  isUnlocked: boolean;
-}
+} & BaseViewProps &
+  BaseViewHeadingProps;
 
 const STOP_OP_MODE = '$Stop$Robot$';
 

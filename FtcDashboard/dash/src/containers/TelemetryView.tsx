@@ -4,14 +4,17 @@ import { connect } from 'react-redux';
 
 import { telemetryType } from './types';
 
-import BaseView, { BaseViewHeading, BaseViewBody } from './BaseView';
+import BaseView, {
+  BaseViewProps,
+  BaseViewHeading,
+  BaseViewBody,
+  BaseViewHeadingProps,
+} from './BaseView';
 
-interface TelemetryViewProps {
+type TelemetryViewProps = {
   telemetry?: any;
-
-  isDraggable?: boolean;
-  isUnlocked?: boolean;
-}
+} & BaseViewProps &
+  BaseViewHeadingProps;
 
 const TelemetryView: FunctionComponent<TelemetryViewProps> = ({
   telemetry,

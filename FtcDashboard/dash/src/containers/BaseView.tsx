@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 
-interface BaseViewProps {
-  isUnlocked: boolean;
+export interface BaseViewProps {
+  isUnlocked?: boolean;
 }
 
 const BaseView = styled.div.attrs<BaseViewProps>(({ isUnlocked = false }) => ({
@@ -10,8 +10,8 @@ const BaseView = styled.div.attrs<BaseViewProps>(({ isUnlocked = false }) => ({
   }`,
 }))<BaseViewProps>``;
 
-interface BaseViewHeadingProps {
-  isDraggable: boolean;
+export interface BaseViewHeadingProps {
+  isDraggable?: boolean;
 }
 
 const BaseViewHeading = styled.h2.attrs<BaseViewHeadingProps>(
