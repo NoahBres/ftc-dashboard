@@ -1,4 +1,4 @@
-import React from 'react';
+import { Component, ChangeEvent } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 
@@ -10,14 +10,37 @@ import Icon from '../components/Icon';
 import IconGroup from '../components/IconGroup';
 import BaseView, { BaseViewHeading, BaseViewBody } from './BaseView';
 
+interface OpModeViewState {
+  selectedOpMode: string;
+}
+
+interface OpModeViewProps {
+  available: boolean;
+  activeOpMode: string;
+  activeOpModeStatus: any;
+  opModeList: any;
+  warningMessage: string;
+  errorMessage: string;
+  dispatch: any;
+  gamepad1Connected: boolean;
+  gamepad2Connected: boolean;
+
+  isDraggable: boolean;
+  isUnlocked: boolean;
+}
+
 const STOP_OP_MODE = '$Stop$Robot$';
 
-const ActionButton = styled.button.attrs({
-  className: 'ml-3 py-1 px-4 border rounded-md shadow-md',
-})``;
+interface ActionButtonProps {
+  customStyle: string;
+}
+const ActionButton = styled.button.attrs<ActionButtonProps>((props) => {
+  // eslint-disable-next-line no-unused-labels
+  className: `ml-3 py-1 px-4 border rounded-md shadow-md ${props.customStyle}`;
+})<ActionButtonProps>``;
 
-class OpModeView extends React.Component {
-  constructor(props) {
+class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
+  constructor(props: OpModeViewProps) {
     super(props);
 
     this.state = {
@@ -27,7 +50,25 @@ class OpModeView extends React.Component {
     this.onChange = this.onChange.bind(this);
   }
 
-  static getDerivedStateFromProps(props, state) {
+  static propTypes = {
+    available: PropTypes.bool.isRequired,
+    activeOpMode: PropTypes.string.isRequired,
+    activeOpModeStatus: PropTypes.oneOf(Object.keys(OpModeStatus)),
+    opModeList: PropTypes.arrayOf(PropTypes.string).isRequired,
+    warningMessage: PropTypes.string.isRequired,
+    errorMessage: PropTypes.string.isRequired,
+    dispatch: PropTypes.func.isRequired,
+    gamepad1Connected: PropTypes.bool.isRequired,
+    gamepad2Connected: PropTypes.bool.isRequired,
+
+    isDraggable: PropTypes.bool,
+    isUnlocked: PropTypes.bool,
+  };
+
+  static getDerivedStateFromProps(
+    props: OpModeViewProps,
+    state: OpModeViewState,
+  ) {
     if (props.activeOpMode !== STOP_OP_MODE) {
       return {
         selectedOpMode: props.activeOpMode,
@@ -44,7 +85,7 @@ class OpModeView extends React.Component {
     }
   }
 
-  onChange(evt) {
+  onChange(evt: ChangeEvent<HTMLSelectElement>) {
     this.setState({
       selectedOpMode: evt.target.value,
     });
@@ -53,7 +94,7 @@ class OpModeView extends React.Component {
   renderInitButton() {
     return (
       <ActionButton
-        className="bg-blue-200 border-blue-300"
+        customStyle="bg-blue-200 border-blue-300"
         onClick={() =>
           this.props.dispatch(initOpMode(this.state.selectedOpMode))
         }
@@ -66,7 +107,7 @@ class OpModeView extends React.Component {
   renderStartButton() {
     return (
       <ActionButton
-        className="bg-green-200 border-green-300"
+        customStyle="bg-green-200 border-green-300"
         onClick={() => this.props.dispatch(startOpMode())}
       >
         Start
@@ -77,7 +118,7 @@ class OpModeView extends React.Component {
   renderStopButton() {
     return (
       <ActionButton
-        className="bg-red-200 border-red-300"
+        customStyle="bg-red-200 border-red-300"
         onClick={() => this.props.dispatch(stopOpMode())}
       >
         Stop
@@ -165,7 +206,7 @@ class OpModeView extends React.Component {
             ) : (
               opModeList
                 .sort()
-                .map((opMode) => <option key={opMode}>{opMode}</option>)
+                .map((opMode: any) => <option key={opMode}>{opMode}</option>)
             )}
           </select>
           {this.renderButtons()}
@@ -181,24 +222,15 @@ class OpModeView extends React.Component {
   }
 }
 
-OpModeView.propTypes = {
-  available: PropTypes.bool.isRequired,
-  activeOpMode: PropTypes.string.isRequired,
-  activeOpModeStatus: PropTypes.oneOf(Object.keys(OpModeStatus)),
-  opModeList: PropTypes.arrayOf(PropTypes.string).isRequired,
-  warningMessage: PropTypes.string.isRequired,
-  errorMessage: PropTypes.string.isRequired,
-  dispatch: PropTypes.func.isRequired,
-  gamepad1Connected: PropTypes.bool.isRequired,
-  gamepad2Connected: PropTypes.bool.isRequired,
-
-  isDraggable: PropTypes.bool,
-  isUnlocked: PropTypes.bool,
-};
-
-const mapStateToProps = ({ status, gamepad }) => ({
+const mapStateToProps = ({
+  status,
+  gamepad,
+}: {
+  status: any;
+  gamepad: any;
+}) => ({
   ...status,
   ...gamepad,
 });
 
-export default connect(mapStateToProps)(OpModeView);
+export default connect(mapStateToProps)(OpModeView as any);

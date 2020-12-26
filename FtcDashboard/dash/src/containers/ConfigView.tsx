@@ -1,3 +1,4 @@
+import { FunctionComponent } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 
@@ -14,14 +15,24 @@ import {
 } from '../actions/config';
 import VariableType from '../enums/VariableType';
 
-const ConfigView = ({
+interface ConfigViewProps {
+  configRoot?: any;
+  onRefresh?: any;
+  onSave?: any;
+  onChange?: any;
+
+  isDraggable?: boolean;
+  isUnlocked?: boolean;
+}
+
+const ConfigView: FunctionComponent<ConfigViewProps> = ({
   configRoot,
   onRefresh,
   onSave,
   onChange,
-  isDraggable,
-  isUnlocked,
-}) => {
+  isDraggable = false,
+  isUnlocked = false,
+}: ConfigViewProps) => {
   const sortedKeys = Object.keys(configRoot.__value || {});
 
   sortedKeys.sort();
@@ -52,7 +63,7 @@ const ConfigView = ({
                 key={key}
                 name={key}
                 value={configRoot.__value[key].__value || {}}
-                onChange={(newValue) => {
+                onChange={(newValue: any) => {
                   onChange({
                     __type: VariableType.CUSTOM,
                     __value: {
@@ -60,7 +71,7 @@ const ConfigView = ({
                     },
                   });
                 }}
-                onSave={(newValue) => {
+                onSave={(newValue: any) => {
                   onSave({
                     __type: VariableType.CUSTOM,
                     __value: {
@@ -87,16 +98,16 @@ ConfigView.propTypes = {
   isUnlocked: PropTypes.bool,
 };
 
-const mapStateToProps = ({ config }) => config;
+const mapStateToProps = ({ config }: { config: any }) => config;
 
-const mapDispatchToProps = (dispatch) => ({
+const mapDispatchToProps = (dispatch: any) => ({
   onRefresh: () => {
     dispatch(refreshConfig());
   },
-  onSave: (configDiff) => {
+  onSave: (configDiff: any) => {
     dispatch(saveConfig(configDiff));
   },
-  onChange: (configDiff) => {
+  onChange: (configDiff: any) => {
     dispatch(updateConfig(configDiff));
   },
 });
