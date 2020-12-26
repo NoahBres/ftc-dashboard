@@ -37,10 +37,9 @@ const STOP_OP_MODE = '$Stop$Robot$';
 interface ActionButtonProps {
   customStyle: string;
 }
-const ActionButton = styled.button.attrs<ActionButtonProps>((props) => {
-  // eslint-disable-next-line no-unused-labels
-  className: `ml-3 py-1 px-4 border rounded-md shadow-md ${props.customStyle}`;
-})<ActionButtonProps>``;
+const ActionButton = styled.button.attrs<ActionButtonProps>((props) => ({
+  className: `ml-3 py-1 px-4 border rounded-md shadow-md ${props.customStyle}`,
+}))<ActionButtonProps>``;
 
 class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
   constructor(props: OpModeViewProps) {
