@@ -6,6 +6,8 @@ import styled from 'styled-components';
 
 import { initOpMode, startOpMode, stopOpMode } from '../actions/opmode';
 import OpModeStatus from '../enums/OpModeStatus';
+import { STOP_OP_MODE_TAG } from './types';
+
 import Icon from '../components/Icon';
 import IconGroup from '../components/IconGroup';
 import BaseView, {
@@ -31,8 +33,6 @@ type OpModeViewProps = {
   gamepad2Connected: boolean;
 } & BaseViewProps &
   BaseViewHeadingProps;
-
-const STOP_OP_MODE = '$Stop$Robot$';
 
 interface ActionButtonProps {
   customStyle: string;
@@ -71,7 +71,7 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
     props: OpModeViewProps,
     state: OpModeViewState,
   ) {
-    if (props.activeOpMode !== STOP_OP_MODE) {
+    if (props.activeOpMode !== STOP_OP_MODE_TAG) {
       return {
         selectedOpMode: props.activeOpMode,
       };
@@ -133,7 +133,7 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
 
     if (opModeList.length === 0) {
       return null;
-    } else if (activeOpMode === STOP_OP_MODE) {
+    } else if (activeOpMode === STOP_OP_MODE_TAG) {
       return this.renderInitButton();
     } else if (activeOpModeStatus === OpModeStatus.INIT) {
       return (
@@ -200,7 +200,9 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
           <select
             className="bg-gray-200 rounded py-2 pr-7 px-2 border border-gray-300 shadow-md disabled:shadow-none disabled:text-gray-600 transition"
             value={this.state.selectedOpMode}
-            disabled={activeOpMode !== STOP_OP_MODE || opModeList.length === 0}
+            disabled={
+              activeOpMode !== STOP_OP_MODE_TAG || opModeList.length === 0
+            }
             onChange={this.onChange}
           >
             {opModeList.length === 0 ? (
