@@ -2,17 +2,20 @@ import { useState, useEffect, useRef, FunctionComponent } from 'react';
 import { connect } from 'react-redux';
 
 import { v4 as uuid4 } from 'uuid';
-import AutoSizer from 'react-virtualized-auto-sizer';
-import { FixedSizeList as List } from 'react-window';
 
 import BaseView, {
   BaseViewProps,
   BaseViewHeading,
   BaseViewBody,
   BaseViewHeadingProps,
-} from './BaseView';
-import { STOP_OP_MODE_TAG, Telemetry } from './types';
-import OpModeStatus from '../enums/OpModeStatus';
+} from '../BaseView';
+import { STOP_OP_MODE_TAG, Telemetry } from '../types';
+import OpModeStatus from '../../enums/OpModeStatus';
+
+import CustomVirtualList from './CustomVirtualList';
+
+import { ReactComponent as DownloadSVG } from '../../assets/icons/file_download.svg';
+import { ReactComponent as DownloadOffSVG } from '../../assets/icons/file_download_off.svg';
 
 type LoggingViewProps = {
   telemetry?: Telemetry;
@@ -38,7 +41,7 @@ interface SelectedTag {
   id: string;
 }
 
-interface LogItem {
+export interface LogItem {
   timestamp: number;
   tag: string;
   data: string;
@@ -53,36 +56,6 @@ const PILL_COLORS = [
   'bg-pink-500 border-pink-600 focus-within:ring-pink-600',
 ];
 
-interface VirtualListItem {
-  data: LogItem[];
-  index: number;
-  style: any;
-}
-
-const LIST_ITEM_HEIGHT = 35;
-
-const VirtualListItem: FunctionComponent<VirtualListItem> = ({
-  data,
-  index,
-  style,
-}: VirtualListItem) => {
-  const time = new Date(data[index].timestamp);
-  const tag = data[index].tag;
-  const value = data[index].data;
-
-  return (
-    <div style={style} className="flex items-center">
-      <span className="text-neutral-gray-300 mr-2">
-        {time.toISOString().slice(11, -1)}
-      </span>{' '}
-      <span className="w-32 inline-block truncate mr-2 font-semibold">
-        {tag}:
-      </span>{' '}
-      <span>{value}</span>
-    </div>
-  );
-};
-
 const LoggingView: FunctionComponent<LoggingViewProps> = ({
   telemetry,
   activeOpMode,
@@ -92,20 +65,22 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   isDraggable = false,
   isUnlocked = false,
 }: LoggingViewProps) => {
-  const telemetryStore = useRef<TelemetryStoreItem[]>([]);
-  const listRef = useRef<List>(null);
   const storedTags = useRef<string[]>([]);
 
+  const [telemetryStore, setTelemetryStore] = useState<TelemetryStoreItem[]>(
+    [],
+  );
   const [isRecording, setIsRecording] = useState(false);
   const [tagsSelected, setTagsSelected] = useState<SelectedTag[]>([]);
 
   const [filteredLogs, setFilteredLogs] = useState<LogItem[]>([]);
-  const [isScrollAtBottom, setIsScrollAtBottom] = useState(true);
+
+  const [isDownloadable, setIsDownloadable] = useState(false);
 
   const clearPastTelemetry = () => {
-    telemetryStore.current = [];
     storedTags.current = [];
 
+    setTelemetryStore([]);
     setTagsSelected([]);
     setFilteredLogs([]);
   };
@@ -114,9 +89,10 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     if (isRecording) {
       const newKeys: string[] = [];
       const newLog: LogItem[] = [];
+      const newTelemetryStoreItems: TelemetryStoreItem[] = [];
 
       telemetry?.forEach((e) => {
-        const newTelemetryStoreItem: TelemetryField[] = [];
+        const newTelemetryStoreChunk: TelemetryField[] = [];
 
         for (const [key, value] of Object.entries(e.data)) {
           if (!storedTags.current.includes(key)) {
@@ -124,7 +100,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
             storedTags.current.push(key);
           }
 
-          newTelemetryStoreItem.push({ tag: key, data: value });
+          newTelemetryStoreChunk.push({ tag: key, data: value });
 
           // Ingest into filtered logs
           if (
@@ -137,14 +113,17 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
           }
         }
 
-        if (newTelemetryStoreItem.length !== 0) {
-          telemetryStore.current.push({
+        if (newTelemetryStoreChunk.length !== 0) {
+          newTelemetryStoreItems.push({
             timestamp: e.timestamp,
-            data: newTelemetryStoreItem,
+            data: newTelemetryStoreChunk,
           });
         }
       });
 
+      if (newTelemetryStoreItems.length !== 0) {
+        setTelemetryStore([...telemetryStore, ...newTelemetryStoreItems]);
+      }
       if (newKeys.length !== 0) {
         setTagsSelected([
           ...tagsSelected,
@@ -184,15 +163,12 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   // }, [isRecording]);
 
   useEffect(() => {
-    if (listRef.current) {
-      if (isScrollAtBottom) {
-        const props = listRef.current.props;
-        listRef.current.scrollTo(
-          props.itemCount * props.itemSize - (props.height as number),
-        );
-      }
+    if (!isRecording && telemetryStore.length !== 0) {
+      setIsDownloadable(true);
+    } else {
+      setIsDownloadable(false);
     }
-  }, [filteredLogs, isScrollAtBottom]);
+  }, [isRecording, telemetryStore.length]);
 
   const tagPillOnChange = (id: string) => {
     const tagsSelectedCopy = [...tagsSelected];
@@ -202,12 +178,12 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
         .isChecked;
 
       setTagsSelected(tagsSelectedCopy);
-      updateFilteredLogs(tagsSelectedCopy);
+      updateFilteredLogs();
     }
   };
 
-  const updateFilteredLogs = (tags: SelectedTag[]) => {
-    const newFilteredLogs = telemetryStore.current.reduce((acc, curr) => {
+  const updateFilteredLogs = () => {
+    const newFilteredLogs = telemetryStore.reduce((acc, curr) => {
       const newLogs = curr.data
         .filter((e) =>
           tagsSelected
@@ -226,38 +202,31 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     setFilteredLogs(newFilteredLogs);
   };
 
-  const onListScroll = ({
-    scrollOffset,
-    scrollUpdateWasRequested,
-  }: {
-    scrollOffset: number;
-    scrollUpdateWasRequested: boolean;
-  }) => {
-    const BOTTOM_THRESHOLD = 5;
-
-    if (listRef.current) {
-      const props = listRef.current.props;
-      const bottom =
-        props.itemCount * props.itemSize -
-        (props.height as number) -
-        scrollOffset;
-
-      if (!scrollUpdateWasRequested) {
-        if (bottom <= BOTTOM_THRESHOLD) setIsScrollAtBottom(true);
-        else setIsScrollAtBottom(false);
-      }
-    }
-  };
-
   return (
     <BaseView
       className="flex flex-col"
       isUnlocked={isUnlocked}
       style={{ paddingLeft: '0' }}
     >
-      <BaseViewHeading className="pl-4" isDraggable={isDraggable}>
-        Logging View | {filteredLogs.length}
-      </BaseViewHeading>
+      <div className="flex-center">
+        <BaseViewHeading className="pl-4" isDraggable={isDraggable}>
+          Logging View
+        </BaseViewHeading>
+        <div className="flex items-center mr-3 space-x-1">
+          <button
+            className={`icon-btn w-8 h-8 ${
+              isDownloadable ? '' : 'pointer-events-none opacity-50'
+            }`}
+            disabled={!isDownloadable}
+          >
+            {isDownloadable ? (
+              <DownloadSVG className="w-6 h-6" />
+            ) : (
+              <DownloadOffSVG className="w-6 h-6" />
+            )}
+          </button>
+        </div>
+      </div>
       <BaseViewBody>
         <div className="space-x-2 pl-3 px-2 py-2 pb-3 w-full overflow-x-auto whitespace-nowrap">
           {tagsSelected.map((e, index) => (
@@ -279,22 +248,10 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
           className="pl-4 overflow-auto"
           style={{ height: 'calc(100% - 50px)' }}
         >
-          <AutoSizer>
-            {({ height, width }) => (
-              <List
-                ref={listRef}
-                className="List"
-                height={height}
-                itemCount={filteredLogs.length}
-                itemData={filteredLogs}
-                itemSize={LIST_ITEM_HEIGHT}
-                width={width}
-                onScroll={onListScroll}
-              >
-                {VirtualListItem}
-              </List>
-            )}
-          </AutoSizer>
+          <CustomVirtualList
+            itemCount={filteredLogs.length}
+            itemData={filteredLogs}
+          />
         </div>
       </BaseViewBody>
     </BaseView>

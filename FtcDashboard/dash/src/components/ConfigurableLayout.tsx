@@ -28,7 +28,7 @@ import LockSVGURL from '../assets/icons/lock.svg';
 import { ReactComponent as RemoveCircleSVG } from '../assets/icons/remove_circle.svg';
 import { ReactComponent as RemoveCircleOutlineSVG } from '../assets/icons/remove_circle_outline.svg';
 import CreateSVGURL from '../assets/icons/create.svg';
-import LoggingView from '../containers/LoggingView';
+import LoggingView from '../containers/LoggingView/LoggingView';
 
 function maxArray(a: number[], b: number[]) {
   if (a.length !== b.length) {
