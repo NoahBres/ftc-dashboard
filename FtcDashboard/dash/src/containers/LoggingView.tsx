@@ -58,6 +58,8 @@ interface VirtualListItem {
   style: any;
 }
 
+const LIST_ITEM_HEIGHT = 35;
+
 const VirtualListItem: FunctionComponent<VirtualListItem> = ({
   data,
   index,
@@ -67,17 +69,15 @@ const VirtualListItem: FunctionComponent<VirtualListItem> = ({
   const tag = data[index].tag;
   const value = data[index].data;
 
-  const hours = `0${time.getHours()}`;
-  const minutes = `0${time.getMinutes()}`;
-  const seconds = `0${time.getSeconds()}`;
-
-  const formattedTime = `${hours.substr(-2)}:${minutes.substr(
-    -2,
-  )}:${seconds.substr(-2)}`;
-
   return (
-    <div style={style}>
-      {formattedTime} {tag} {value}
+    <div style={style} className="flex items-center">
+      <span className="text-neutral-gray-300 mr-2">
+        {time.toISOString().slice(11, -1)}
+      </span>{' '}
+      <span className="w-32 inline-block truncate mr-2 font-semibold">
+        {tag}:
+      </span>{' '}
+      <span>{value}</span>
     </div>
   );
 };
@@ -98,17 +98,19 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   const [tagsSelected, setTagsSelected] = useState<SelectedTag[]>([]);
 
   const [filteredLogs, setFilteredLogs] = useState<LogItem[]>([]);
+  const [isScrollAtBottom, setIsScrollAtBottom] = useState(true);
 
   const clearPastTelemetry = () => {
     telemetryStore.current = {};
     setTagsSelected([]);
-    console.log('clear');
+    setFilteredLogs([]);
   };
 
   useEffect(() => {
     // console.log(telemetry);
     if (isRecording) {
       const newKeys: string[] = [];
+      const newLog: LogItem[] = [];
 
       telemetry?.forEach((e) => {
         for (const [key, value] of Object.entries(e.data)) {
@@ -133,10 +135,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
               .map((e) => e.tag)
               .includes(key)
           ) {
-            setFilteredLogs([
-              ...filteredLogs,
-              { timestamp: e.timestamp, data: value, tag: key },
-            ]);
+            newLog.push({ timestamp: e.timestamp, data: value, tag: key });
           }
         }
       });
@@ -146,6 +145,9 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
           ...tagsSelected,
           ...newKeys.map((e) => ({ tag: e, isChecked: false, id: uuid4() })),
         ]);
+      }
+      if (newLog.length !== 0) {
+        setFilteredLogs([...filteredLogs, ...newLog]);
       }
     } else {
       setIsRecording(true);
@@ -174,6 +176,17 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   //   if (isRecording) clearPastTelemetry();
   // }, [isRecording]);
 
+  useEffect(() => {
+    if (listRef.current) {
+      if (isScrollAtBottom) {
+        const props = listRef.current.props;
+        listRef.current.scrollTo(
+          props.itemCount * props.itemSize - (props.height as number),
+        );
+      }
+    }
+  }, [filteredLogs, isScrollAtBottom]);
+
   const tagPillOnChange = (id: string) => {
     const tagsSelectedCopy = [...tagsSelected];
     const targetIndex = tagsSelectedCopy.findIndex((e) => e.id === id);
@@ -181,6 +194,29 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
       tagsSelectedCopy[targetIndex].isChecked = !tagsSelectedCopy[targetIndex]
         .isChecked;
       setTagsSelected(tagsSelectedCopy);
+    }
+  };
+
+  const onListScroll = ({
+    scrollOffset,
+    scrollUpdateWasRequested,
+  }: {
+    scrollOffset: number;
+    scrollUpdateWasRequested: boolean;
+  }) => {
+    const BOTTOM_THRESHOLD = 5;
+
+    if (listRef.current) {
+      const props = listRef.current.props;
+      const bottom =
+        props.itemCount * props.itemSize -
+        (props.height as number) -
+        scrollOffset;
+
+      if (!scrollUpdateWasRequested) {
+        if (bottom <= BOTTOM_THRESHOLD) setIsScrollAtBottom(true);
+        else setIsScrollAtBottom(false);
+      }
     }
   };
 
@@ -222,8 +258,9 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
                 height={height}
                 itemCount={filteredLogs.length}
                 itemData={filteredLogs}
-                itemSize={35}
+                itemSize={LIST_ITEM_HEIGHT}
                 width={width}
+                onScroll={onListScroll}
               >
                 {VirtualListItem}
               </List>
