@@ -1,5 +1,13 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 
+import styled from 'styled-components';
+
+export const ToolTip = styled.span.attrs<{ isShowing: boolean }>((props) => ({
+  className: `rounded-md px-3 py-1 absolute w-max bg-gray-800 bg-opacity-80 text-white text-sm pointer-events-none transform transition ${
+    props.isShowing ? '-translate-y-11 opacity-100' : '-translate-y-9 opacity-0'
+  }`,
+}))<{ isShowing: boolean }>``;
+
 export default function useDelayedTooltip(delay: number) {
   const [isShowingTooltip, setIsShowingTooltip] = useState(false);
   const isMouseStillIn = useRef(false);

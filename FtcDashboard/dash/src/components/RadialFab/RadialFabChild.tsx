@@ -1,7 +1,7 @@
 import { ReactNode, FunctionComponent } from 'react';
 import styled from 'styled-components';
 
-import useDelayedTooltip from '../../hooks/useDelayedTooltip';
+import useDelayedTooltip, { ToolTip } from '../../hooks/useDelayedTooltip';
 
 interface RadialFabChildProps {
   customClass?: string;
@@ -49,12 +49,6 @@ const SVGIcon = styled.div<RadialFabChildProps>`
       isOpen ? 0 : 90
     }deg)`};
 `;
-
-const ToolTip = styled.span.attrs<{ isShowing: boolean }>((props) => ({
-  className: `rounded-md px-3 py-1 absolute w-max bg-gray-800 bg-opacity-80 text-white text-sm pointer-events-none transform transition ${
-    props.isShowing ? '-translate-y-11 opacity-100' : '-translate-y-9 opacity-0'
-  }`,
-}))<{ isShowing: boolean }>``;
 
 const RadialFabChild: FunctionComponent<RadialFabChildProps> = (
   props: RadialFabChildProps,
