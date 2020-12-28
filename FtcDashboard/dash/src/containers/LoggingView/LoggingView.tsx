@@ -248,11 +248,19 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
       })
       .join('\r\n');
     const csv = `${firstRow}\r\n${body}`;
+
+    const fileDate = new Date(telemetryStoreCopy[0].timestamp);
+    const year = fileDate.getFullYear();
+    const month = `0${fileDate.getMonth()}`.slice(-2);
+    const date = `0${fileDate.getDay()}`.slice(-2);
+
+    const hourlyDate = DateToHHMMSS(fileDate)
+      .replaceAll(':', '_')
+      .split('.')[0];
+
     downloadBlob(
       csv,
-      `${currentOpModeName.current}-${DateToHHMMSS(
-        new Date(telemetryStoreCopy[0].timestamp),
-      )}.csv`,
+      `${currentOpModeName.current} ${year}-${month}-${date} ${hourlyDate}.csv`,
       'text/csv',
     );
   };
