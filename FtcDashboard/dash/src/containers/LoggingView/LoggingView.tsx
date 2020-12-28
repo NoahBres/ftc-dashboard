@@ -14,6 +14,7 @@ import OpModeStatus from '../../enums/OpModeStatus';
 
 import CustomVirtualList from './CustomVirtualList';
 import { DateToHHMMSS } from './DateFormatting';
+import useDelayedTooltip, { ToolTip } from '../../hooks/useDelayedTooltip';
 
 import { ReactComponent as DownloadSVG } from '../../assets/icons/file_download.svg';
 import { ReactComponent as DownloadOffSVG } from '../../assets/icons/file_download_off.svg';
@@ -67,7 +68,6 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   isUnlocked = false,
 }: LoggingViewProps) => {
   const storedTags = useRef<string[]>([]);
-  const currentOpModeName = useRef('');
 
   const [telemetryStore, setTelemetryStore] = useState<TelemetryStoreItem[]>(
     [],
@@ -78,6 +78,12 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   const [filteredLogs, setFilteredLogs] = useState<LogItem[]>([]);
 
   const [isDownloadable, setIsDownloadable] = useState(false);
+  const [currentOpModeName, setCurrentOpModeName] = useState('');
+
+  const {
+    isShowingTooltip: isShowingDownloadTooltip,
+    ref: downloadRef,
+  } = useDelayedTooltip(0.5);
 
   const clearPastTelemetry = () => {
     storedTags.current = [];
@@ -162,7 +168,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
 
   useEffect(() => {
     if (activeOpModeStatus === OpModeStatus.RUNNING) {
-      currentOpModeName.current = activeOpMode ?? '';
+      setCurrentOpModeName(activeOpMode ?? '');
     }
   }, [activeOpMode, activeOpModeStatus]);
 
@@ -171,12 +177,16 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   // }, [isRecording]);
 
   useEffect(() => {
-    if (!isRecording && telemetryStore.length !== 0) {
+    if (
+      !isRecording &&
+      telemetryStore.length !== 0 &&
+      !selectedTags.every((e) => !e.isChecked)
+    ) {
       setIsDownloadable(true);
     } else {
       setIsDownloadable(false);
     }
-  }, [isRecording, telemetryStore.length]);
+  }, [isRecording, selectedTags, telemetryStore.length]);
 
   const tagPillOnChange = (id: string) => {
     const tagsSelectedCopy = [...selectedTags];
@@ -211,6 +221,8 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   };
 
   const downloadCSV = () => {
+    if (!isDownloadable) return;
+
     function downloadBlob(data: string, fileName: string, mime: string) {
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -260,8 +272,59 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
 
     downloadBlob(
       csv,
-      `${currentOpModeName.current} ${year}-${month}-${date} ${hourlyDate}.csv`,
+      `${currentOpModeName} ${year}-${month}-${date} ${hourlyDate}.csv`,
       'text/csv',
+    );
+  };
+
+  const getToolTipError = () => {
+    if (
+      telemetryStore.length === 0 &&
+      activeOpModeStatus !== OpModeStatus.RUNNING
+    ) {
+      return 'No logs to download';
+    } else if (activeOpModeStatus === OpModeStatus.RUNNING) {
+      return 'Cannot download logs while OpMode is running';
+    } else if (selectedTags.every((e) => !e.isChecked)) {
+      return 'Select the tags you would like in your CSV download';
+    }
+
+    return `Download logs for ${currentOpModeName}`;
+  };
+
+  const ErrorMessageFlow = () => {
+    if (
+      telemetryStore.length === 0 &&
+      activeOpModeStatus !== OpModeStatus.RUNNING
+    ) {
+      return (
+        <div className="w-full h-full flex-center flex-col">
+          <p className="text-center">No logs recorded</p>
+          <p className="text-center">
+            Logs will be recorded as an opmode starts streaming tagged telemetry
+            data
+          </p>
+        </div>
+      );
+    } else if (storedTags.current.length === 0) {
+      return (
+        <div className="w-full h-full flex-center flex-col">
+          <p className="text-center">Tagged telemetry not yet sent</p>
+        </div>
+      );
+    } else if (selectedTags.every((e) => !e.isChecked)) {
+      return (
+        <div className="w-full h-full flex-center flex-col">
+          <p className="text-center">Select tags to display relevant logs</p>
+        </div>
+      );
+    }
+
+    return (
+      <CustomVirtualList
+        itemCount={filteredLogs.length}
+        itemData={filteredLogs}
+      />
     );
   };
 
@@ -277,17 +340,20 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
         </BaseViewHeading>
         <div className="flex items-center mr-3 space-x-1">
           <button
-            className={`icon-btn w-8 h-8 ${
-              isDownloadable ? '' : 'pointer-events-none opacity-50'
+            className={`icon-btn w-8 h-8 relative ${
+              isDownloadable ? '' : 'border-gray-400'
             }`}
-            disabled={!isDownloadable}
             onClick={downloadCSV}
+            ref={downloadRef}
           >
             {isDownloadable ? (
               <DownloadSVG className="w-6 h-6" />
             ) : (
-              <DownloadOffSVG className="w-6 h-6" />
+              <DownloadOffSVG className="w-6 h-6 text-neutral-gray-400" />
             )}
+            <ToolTip isShowing={isShowingDownloadTooltip}>
+              {getToolTipError()}
+            </ToolTip>
           </button>
         </div>
       </div>
@@ -312,10 +378,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
           className="pl-4 overflow-auto"
           style={{ height: 'calc(100% - 50px)' }}
         >
-          <CustomVirtualList
-            itemCount={filteredLogs.length}
-            itemData={filteredLogs}
-          />
+          {ErrorMessageFlow()}
         </div>
       </BaseViewBody>
     </BaseView>
