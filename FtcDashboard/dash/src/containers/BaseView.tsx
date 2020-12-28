@@ -5,7 +5,7 @@ export interface BaseViewProps {
 }
 
 const BaseView = styled.div.attrs<BaseViewProps>((props) => ({
-  className: `h-full pl-4 pt-2 bg-white bg-opacity-75 overflow-hidden transition-shadow ${
+  className: `h-full pl-4 pt-2 bg-white bg-opacity-75 transition-shadow ${
     props.isUnlocked ? 'shadow-md rounded-md select-none' : ''
   }`,
 }))<BaseViewProps>``;
@@ -21,7 +21,7 @@ const BaseViewHeading = styled.h2.attrs<BaseViewHeadingProps>((props) => ({
 }))<BaseViewHeadingProps>``;
 
 const BaseViewBody = styled.div`
-  height: calc(100% - 52px);
+  height: calc(100% - 44px);
   overflow: auto;
 `;
 
