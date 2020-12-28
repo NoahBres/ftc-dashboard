@@ -4,6 +4,7 @@ import AutoSizer from 'react-virtualized-auto-sizer';
 import { FixedSizeList as List } from 'react-window';
 
 import { LogItem } from './LoggingView';
+import { DateToHHMMSS } from './DateFormatting';
 
 interface CustomVirtualListProps {
   itemCount: number;
@@ -29,9 +30,7 @@ const VirtualListItem: FunctionComponent<VirtualListItem> = ({
 
   return (
     <div style={style} className="flex items-center">
-      <span className="text-neutral-gray-300 mr-2">
-        {time.toISOString().slice(11, -1)}
-      </span>{' '}
+      <span className="text-neutral-gray-300 mr-2">{DateToHHMMSS(time)}</span>{' '}
       <span className="w-32 inline-block truncate mr-2 font-semibold">
         {tag}:
       </span>{' '}

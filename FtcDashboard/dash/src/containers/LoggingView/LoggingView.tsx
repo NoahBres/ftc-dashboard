@@ -13,6 +13,7 @@ import { STOP_OP_MODE_TAG, Telemetry } from '../types';
 import OpModeStatus from '../../enums/OpModeStatus';
 
 import CustomVirtualList from './CustomVirtualList';
+import { DateToHHMMSS } from './DateFormatting';
 
 import { ReactComponent as DownloadSVG } from '../../assets/icons/file_download.svg';
 import { ReactComponent as DownloadOffSVG } from '../../assets/icons/file_download_off.svg';
@@ -238,7 +239,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     const body = telemetryStoreCopy
       .map((e) => {
         const newRow = tags.map((tag, i) => {
-          if (i === 0) return new Date(e.timestamp).toISOString().slice(11, -1);
+          if (i === 0) return DateToHHMMSS(new Date(e.timestamp));
 
           return e.data.find((data) => data.tag === tag)?.data || '';
         });
@@ -249,9 +250,9 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     const csv = `${firstRow}\r\n${body}`;
     downloadBlob(
       csv,
-      `${currentOpModeName.current}-${new Date(telemetryStoreCopy[0].timestamp)
-        .toISOString()
-        .slice(11, -1)}.csv`,
+      `${currentOpModeName.current}-${DateToHHMMSS(
+        new Date(telemetryStoreCopy[0].timestamp),
+      )}.csv`,
       'text/csv',
     );
   };
