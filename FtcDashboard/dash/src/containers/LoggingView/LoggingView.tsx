@@ -66,12 +66,13 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   isUnlocked = false,
 }: LoggingViewProps) => {
   const storedTags = useRef<string[]>([]);
+  const currentOpModeName = useRef('');
 
   const [telemetryStore, setTelemetryStore] = useState<TelemetryStoreItem[]>(
     [],
   );
   const [isRecording, setIsRecording] = useState(false);
-  const [tagsSelected, setTagsSelected] = useState<SelectedTag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
 
   const [filteredLogs, setFilteredLogs] = useState<LogItem[]>([]);
 
@@ -81,7 +82,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     storedTags.current = [];
 
     setTelemetryStore([]);
-    setTagsSelected([]);
+    setSelectedTags([]);
     setFilteredLogs([]);
   };
 
@@ -104,7 +105,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
 
           // Ingest into filtered logs
           if (
-            tagsSelected
+            selectedTags
               .filter((e) => e.isChecked)
               .map((e) => e.tag)
               .includes(key)
@@ -125,8 +126,8 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
         setTelemetryStore([...telemetryStore, ...newTelemetryStoreItems]);
       }
       if (newKeys.length !== 0) {
-        setTagsSelected([
-          ...tagsSelected,
+        setSelectedTags([
+          ...selectedTags,
           ...newKeys.map((e) => ({ tag: e, isChecked: false, id: uuid4() })),
         ]);
       }
@@ -158,6 +159,12 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     }
   }, [activeOpMode, activeOpModeStatus, isRecording, opModeList]);
 
+  useEffect(() => {
+    if (activeOpModeStatus === OpModeStatus.RUNNING) {
+      currentOpModeName.current = activeOpMode ?? '';
+    }
+  }, [activeOpMode, activeOpModeStatus]);
+
   // useEffect(() => {
   //   if (isRecording) clearPastTelemetry();
   // }, [isRecording]);
@@ -171,13 +178,13 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   }, [isRecording, telemetryStore.length]);
 
   const tagPillOnChange = (id: string) => {
-    const tagsSelectedCopy = [...tagsSelected];
+    const tagsSelectedCopy = [...selectedTags];
     const targetIndex = tagsSelectedCopy.findIndex((e) => e.id === id);
     if (targetIndex !== -1) {
       tagsSelectedCopy[targetIndex].isChecked = !tagsSelectedCopy[targetIndex]
         .isChecked;
 
-      setTagsSelected(tagsSelectedCopy);
+      setSelectedTags(tagsSelectedCopy);
       updateFilteredLogs();
     }
   };
@@ -186,7 +193,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     const newFilteredLogs = telemetryStore.reduce((acc, curr) => {
       const newLogs = curr.data
         .filter((e) =>
-          tagsSelected
+          selectedTags
             .filter((e) => e.isChecked)
             .map((e) => e.tag)
             .includes(e.tag),
@@ -200,6 +207,53 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
       return [...acc, ...newLogs];
     }, [] as LogItem[]);
     setFilteredLogs(newFilteredLogs);
+  };
+
+  const downloadCSV = () => {
+    function downloadBlob(data: string, fileName: string, mime: string) {
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      document.body.appendChild(a);
+
+      const blob = new Blob([data], { type: mime });
+      const url = window.URL.createObjectURL(blob);
+
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    }
+
+    const tags = [
+      'timestamp',
+      ...selectedTags.filter((e) => e.isChecked).map((e) => e.tag),
+    ];
+
+    const telemetryStoreCopy = [...telemetryStore];
+
+    telemetryStoreCopy.sort((a, b) => a.timestamp - b.timestamp);
+
+    const firstRow = tags.join(',');
+    const body = telemetryStoreCopy
+      .map((e) => {
+        const newRow = tags.map((tag, i) => {
+          if (i === 0) return new Date(e.timestamp).toISOString().slice(11, -1);
+
+          return e.data.find((data) => data.tag === tag)?.data || '';
+        });
+
+        return newRow.join(',');
+      })
+      .join('\r\n');
+    const csv = `${firstRow}\r\n${body}`;
+    downloadBlob(
+      csv,
+      `${currentOpModeName.current}-${new Date(telemetryStoreCopy[0].timestamp)
+        .toISOString()
+        .slice(11, -1)}.csv`,
+      'text/csv',
+    );
   };
 
   return (
@@ -218,6 +272,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
               isDownloadable ? '' : 'pointer-events-none opacity-50'
             }`}
             disabled={!isDownloadable}
+            onClick={downloadCSV}
           >
             {isDownloadable ? (
               <DownloadSVG className="w-6 h-6" />
@@ -229,7 +284,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
       </div>
       <BaseViewBody>
         <div className="space-x-2 pl-3 px-2 py-2 pb-3 w-full overflow-x-auto whitespace-nowrap">
-          {tagsSelected.map((e, index) => (
+          {selectedTags.map((e, index) => (
             <button
               key={e.tag}
               className={`
