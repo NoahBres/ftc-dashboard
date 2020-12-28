@@ -21,7 +21,7 @@ const BaseViewHeading = styled.h2.attrs<BaseViewHeadingProps>((props) => ({
 }))<BaseViewHeadingProps>``;
 
 const BaseViewBody = styled.div`
-  height: calc(100% - 44px);
+  height: calc(100% - 52px);
   overflow: auto;
 `;
 
