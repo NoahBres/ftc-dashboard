@@ -16,8 +16,12 @@ import CustomVirtualList from './CustomVirtualList';
 import { DateToHHMMSS } from './DateFormatting';
 import useDelayedTooltip, { ToolTip } from '../../hooks/useDelayedTooltip';
 
+import useBuildListWorker from './useBuildListWorker';
+import useCancellablePromise from '../../hooks/useCancellablePromise';
+
 import { ReactComponent as DownloadSVG } from '../../assets/icons/file_download.svg';
 import { ReactComponent as DownloadOffSVG } from '../../assets/icons/file_download_off.svg';
+import { ReactComponent as LoopSVG } from '../../assets/icons/autorenew.svg';
 
 type LoggingViewProps = {
   telemetry?: Telemetry;
@@ -27,7 +31,7 @@ type LoggingViewProps = {
 } & BaseViewProps &
   BaseViewHeadingProps;
 
-interface TelemetryStoreItem {
+export interface TelemetryStoreItem {
   timestamp: number;
   data: TelemetryField[];
 }
@@ -50,12 +54,12 @@ export interface LogItem {
 }
 
 const PILL_COLORS = [
-  'bg-red-500 border-red-600 focus-within:ring-red-600',
-  'bg-orange-500 border-orange-600 focus-within:ring-orange-600',
-  'bg-green-500 border-green-600 focus-within:ring-green-600',
   'bg-blue-500 border-blue-600 focus-within:ring-blue-600',
   'bg-purple-500 border-purple-600 focus-within:ring-purple-600',
   'bg-pink-500 border-pink-600 focus-within:ring-pink-600',
+  'bg-red-500 border-red-600 focus-within:ring-red-600',
+  'bg-orange-500 border-orange-600 focus-within:ring-orange-600',
+  'bg-green-500 border-green-600 focus-within:ring-green-600',
 ];
 
 const LoggingView: FunctionComponent<LoggingViewProps> = ({
@@ -80,10 +84,15 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   const [isDownloadable, setIsDownloadable] = useState(false);
   const [currentOpModeName, setCurrentOpModeName] = useState('');
 
+  const [isPromiseLoading, setIsPromiseLoading] = useState(false);
+  const { newCancellablePromise, cancelAllPromises } = useCancellablePromise();
+
   const {
     isShowingTooltip: isShowingDownloadTooltip,
     ref: downloadRef,
   } = useDelayedTooltip(0.5);
+
+  const buildList = useBuildListWorker();
 
   const clearPastTelemetry = () => {
     storedTags.current = [];
@@ -172,10 +181,6 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     }
   }, [activeOpMode, activeOpModeStatus]);
 
-  // useEffect(() => {
-  //   if (isRecording) clearPastTelemetry();
-  // }, [isRecording]);
-
   useEffect(() => {
     if (
       !isRecording &&
@@ -188,7 +193,16 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     }
   }, [isRecording, selectedTags, telemetryStore.length]);
 
+  useEffect(() => {
+    setIsPromiseLoading(false);
+  }, [filteredLogs]);
+
   const tagPillOnChange = (id: string) => {
+    // We choose not to update the filtered logs after the logs reach this
+    // value while the telemetry is live. Reconstructing the past logs is
+    // fairly intensive when the logs get very long and introduces a delay
+    const CLEAR_THRESHOLD = 2000;
+
     const tagsSelectedCopy = [...selectedTags];
     const targetIndex = tagsSelectedCopy.findIndex((e) => e.id === id);
     if (targetIndex !== -1) {
@@ -196,28 +210,58 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
         .isChecked;
 
       setSelectedTags(tagsSelectedCopy);
-      updateFilteredLogs();
+
+      if (
+        !(
+          activeOpModeStatus === OpModeStatus.RUNNING &&
+          telemetryStore.length > CLEAR_THRESHOLD
+        )
+      ) {
+        updateFilteredLogs();
+      }
     }
   };
 
   const updateFilteredLogs = () => {
-    const newFilteredLogs = telemetryStore.reduce((acc, curr) => {
-      const newLogs = curr.data
-        .filter((e) =>
-          selectedTags
-            .filter((e) => e.isChecked)
-            .map((e) => e.tag)
-            .includes(e.tag),
-        )
-        .map((e) => ({
-          timestamp: curr.timestamp,
-          tag: e.tag,
-          data: e.data,
-        }));
+    // Threshold at which we switch switch to async filtering and
+    // offload the process of rebuilding the log into a worker
+    // because it's fairly intensive and halts the ui
+    const ASYNC_FILTERED_THRESHOLD = 20000;
+    // const ASYNC_FILTERED_THRESHOLD = 500;
 
-      return [...acc, ...newLogs];
-    }, [] as LogItem[]);
-    setFilteredLogs(newFilteredLogs);
+    if (
+      activeOpModeStatus !== OpModeStatus.RUNNING &&
+      telemetryStore.length > ASYNC_FILTERED_THRESHOLD
+    ) {
+      setIsPromiseLoading(true);
+      cancelAllPromises();
+      newCancellablePromise(
+        buildList.buildList(
+          telemetryStore,
+          selectedTags.filter((e) => e.isChecked).map((e) => e.tag),
+        ),
+      )
+        .then((result: any) => setFilteredLogs(result as LogItem[]))
+        .catch((e) => console.log(e));
+    } else {
+      const newFilteredLogs = telemetryStore.reduce((acc, curr) => {
+        const newLogs = curr.data
+          .filter((e) =>
+            selectedTags
+              .filter((e) => e.isChecked)
+              .map((e) => e.tag)
+              .includes(e.tag),
+          )
+          .map((e) => ({
+            timestamp: curr.timestamp,
+            tag: e.tag,
+            data: e.data,
+          }));
+
+        return [...acc, ...newLogs];
+      }, [] as LogItem[]);
+      setFilteredLogs(newFilteredLogs);
+    }
   };
 
   const downloadCSV = () => {
@@ -316,6 +360,13 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
       return (
         <div className="w-full h-full flex-center flex-col">
           <p className="text-center">Select tags to display relevant logs</p>
+        </div>
+      );
+    } else if (isPromiseLoading) {
+      return (
+        <div className="w-full h-full flex-center space-x-2">
+          <LoopSVG className="animate-spin" />
+          <p className="text-center">Rebuilding logs...</p>
         </div>
       );
     }
