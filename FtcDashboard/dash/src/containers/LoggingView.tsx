@@ -22,13 +22,14 @@ type LoggingViewProps = {
 } & BaseViewProps &
   BaseViewHeadingProps;
 
-interface TelemetryStore {
-  [key: string]: TelemetryField[];
+interface TelemetryStoreItem {
+  timestamp: number;
+  data: TelemetryField[];
 }
 
 interface TelemetryField {
+  tag: string;
   data: string;
-  timestamp: number;
 }
 
 interface SelectedTag {
@@ -91,8 +92,9 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   isDraggable = false,
   isUnlocked = false,
 }: LoggingViewProps) => {
-  const telemetryStore = useRef<TelemetryStore>({});
+  const telemetryStore = useRef<TelemetryStoreItem[]>([]);
   const listRef = useRef<List>(null);
+  const storedTags = useRef<string[]>([]);
 
   const [isRecording, setIsRecording] = useState(false);
   const [tagsSelected, setTagsSelected] = useState<SelectedTag[]>([]);
@@ -101,32 +103,28 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   const [isScrollAtBottom, setIsScrollAtBottom] = useState(true);
 
   const clearPastTelemetry = () => {
-    telemetryStore.current = {};
+    telemetryStore.current = [];
+    storedTags.current = [];
+
     setTagsSelected([]);
     setFilteredLogs([]);
   };
 
   useEffect(() => {
-    // console.log(telemetry);
     if (isRecording) {
       const newKeys: string[] = [];
       const newLog: LogItem[] = [];
 
       telemetry?.forEach((e) => {
-        for (const [key, value] of Object.entries(e.data)) {
-          // Ingest into telemetry store
-          if (
-            !Object.prototype.hasOwnProperty.call(telemetryStore.current, key)
-          ) {
-            telemetryStore.current[key] = [];
+        const newTelemetryStoreItem: TelemetryField[] = [];
 
+        for (const [key, value] of Object.entries(e.data)) {
+          if (!storedTags.current.includes(key)) {
             newKeys.push(key);
+            storedTags.current.push(key);
           }
 
-          telemetryStore.current[key].push({
-            data: value,
-            timestamp: e.timestamp,
-          });
+          newTelemetryStoreItem.push({ tag: key, data: value });
 
           // Ingest into filtered logs
           if (
@@ -137,6 +135,13 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
           ) {
             newLog.push({ timestamp: e.timestamp, data: value, tag: key });
           }
+        }
+
+        if (newTelemetryStoreItem.length !== 0) {
+          telemetryStore.current.push({
+            timestamp: e.timestamp,
+            data: newTelemetryStoreItem,
+          });
         }
       });
 
@@ -153,9 +158,11 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
       setIsRecording(true);
       clearPastTelemetry();
     }
+
+    // Only want this effect to run on new telemetry
+    // So no dependcies on the rest of the states
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telemetry]);
-  // }, [isRecording, tagsSelected, telemetry]);
 
   useEffect(() => {
     if (opModeList?.length === 0) {
@@ -193,8 +200,30 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     if (targetIndex !== -1) {
       tagsSelectedCopy[targetIndex].isChecked = !tagsSelectedCopy[targetIndex]
         .isChecked;
+
       setTagsSelected(tagsSelectedCopy);
+      updateFilteredLogs(tagsSelectedCopy);
     }
+  };
+
+  const updateFilteredLogs = (tags: SelectedTag[]) => {
+    const newFilteredLogs = telemetryStore.current.reduce((acc, curr) => {
+      const newLogs = curr.data
+        .filter((e) =>
+          tagsSelected
+            .filter((e) => e.isChecked)
+            .map((e) => e.tag)
+            .includes(e.tag),
+        )
+        .map((e) => ({
+          timestamp: curr.timestamp,
+          tag: e.tag,
+          data: e.data,
+        }));
+
+      return [...acc, ...newLogs];
+    }, [] as LogItem[]);
+    setFilteredLogs(newFilteredLogs);
   };
 
   const onListScroll = ({
@@ -227,7 +256,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
       style={{ paddingLeft: '0' }}
     >
       <BaseViewHeading className="pl-4" isDraggable={isDraggable}>
-        Logging View
+        Logging View | {filteredLogs.length}
       </BaseViewHeading>
       <BaseViewBody>
         <div className="space-x-2 pl-3 px-2 py-2 pb-3 w-full overflow-x-auto whitespace-nowrap">
