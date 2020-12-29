@@ -1,7 +1,8 @@
-import { ReactNode, FunctionComponent } from 'react';
+import { useRef, ReactNode, FunctionComponent } from 'react';
 import styled from 'styled-components';
 
-import useDelayedTooltip, { ToolTip } from '../../hooks/useDelayedTooltip';
+import useDelayedTooltip from '../../hooks/useDelayedTooltip';
+import Tooltip from '../Tooltip';
 
 interface RadialFabChildProps {
   customClass?: string;
@@ -53,13 +54,16 @@ const SVGIcon = styled.div<RadialFabChildProps>`
 const RadialFabChild: FunctionComponent<RadialFabChildProps> = (
   props: RadialFabChildProps,
 ) => {
-  const { isShowingTooltip, ref } = useDelayedTooltip(0.5);
+  const buttonRef = useRef(null);
+  const isShowingTooltip = useDelayedTooltip(0.5, buttonRef);
 
   return (
-    <ButtonContainer {...props} onClick={props.clickEvent} ref={ref}>
+    <ButtonContainer {...props} onClick={props.clickEvent} ref={buttonRef}>
       <SVGIcon {...props}>{props.children}</SVGIcon>
       {props.toolTipText !== '' ? (
-        <ToolTip isShowing={isShowingTooltip}>{props.toolTipText}</ToolTip>
+        <Tooltip hoverRef={buttonRef} isShowing={isShowingTooltip}>
+          {props.toolTipText ?? ''}
+        </Tooltip>
       ) : null}
     </ButtonContainer>
   );

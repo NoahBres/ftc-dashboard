@@ -14,7 +14,8 @@ import OpModeStatus from '../../enums/OpModeStatus';
 
 import CustomVirtualList from './CustomVirtualList';
 import { DateToHHMMSS } from './DateFormatting';
-import useDelayedTooltip, { ToolTip } from '../../hooks/useDelayedTooltip';
+import useDelayedTooltip from '../../hooks/useDelayedTooltip';
+import Tooltip from '../../components/Tooltip';
 
 import useBuildListWorker from './useBuildListWorker';
 import useCancellablePromise from '../../hooks/useCancellablePromise';
@@ -87,10 +88,8 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   const [isPromiseLoading, setIsPromiseLoading] = useState(false);
   const { newCancellablePromise, cancelAllPromises } = useCancellablePromise();
 
-  const {
-    isShowingTooltip: isShowingDownloadTooltip,
-    ref: downloadRef,
-  } = useDelayedTooltip(0.5);
+  const downloadButtonRef = useRef(null);
+  const isShowingDownloadTooltip = useDelayedTooltip(0.5, downloadButtonRef);
 
   const buildList = useBuildListWorker();
 
@@ -390,20 +389,23 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
         </BaseViewHeading>
         <div className="flex items-center mr-3 space-x-1">
           <button
-            className={`icon-btn w-8 h-8 relative ${
+            className={`icon-btn w-8 h-8 ${
               isDownloadable ? '' : 'border-gray-400'
             }`}
             onClick={downloadCSV}
-            ref={downloadRef}
+            ref={downloadButtonRef}
           >
             {isDownloadable ? (
               <DownloadSVG className="w-6 h-6" />
             ) : (
               <DownloadOffSVG className="w-6 h-6 text-neutral-gray-400" />
             )}
-            <ToolTip isShowing={isShowingDownloadTooltip}>
+            <Tooltip
+              hoverRef={downloadButtonRef}
+              isShowing={isShowingDownloadTooltip}
+            >
               {getToolTipError()}
-            </ToolTip>
+            </Tooltip>
           </button>
         </div>
       </div>
