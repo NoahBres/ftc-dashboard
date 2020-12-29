@@ -28,6 +28,7 @@ import LockSVGURL from '../assets/icons/lock.svg';
 import { ReactComponent as RemoveCircleSVG } from '../assets/icons/remove_circle.svg';
 import { ReactComponent as RemoveCircleOutlineSVG } from '../assets/icons/remove_circle_outline.svg';
 import CreateSVGURL from '../assets/icons/create.svg';
+import LoggingView from '../containers/LoggingView/LoggingView';
 
 function maxArray(a: number[], b: number[]) {
   if (a.length !== b.length) {
@@ -54,6 +55,7 @@ const VIEW_MAP: { [key in ConfigurableView]: ReactElement } = {
   [ConfigurableView.TELEMETRY_VIEW]: <TelemetryView />,
   [ConfigurableView.CAMERA_VIEW]: <CameraView />,
   [ConfigurableView.OPMODE_VIEW]: <OpModeView />,
+  [ConfigurableView.LOGGING_VIEW]: <LoggingView />,
 };
 
 const LOCAL_STORAGE_LAYOUT_KEY = 'configurableLayoutStorage';
@@ -66,13 +68,11 @@ const GRID_DOT_PADDING = 10;
 
 const ReactGridLayout = WidthProvider(RGL);
 
-const Container = styled.div.attrs<{ isLayoutLocked: boolean }>(
-  ({ isLayoutLocked }) => ({
-    className: `${
-      !isLayoutLocked ? 'bg-gray-100' : 'bg-white'
-    } p-2 transition-colors`,
-  }),
-)<{ isLayoutLocked: boolean; bgGridSize: number }>`
+const Container = styled.div.attrs<{ isLayoutLocked: boolean }>((props) => ({
+  className: `${
+    !props.isLayoutLocked ? 'bg-gray-100' : 'bg-white'
+  } p-2 transition-colors`,
+}))<{ isLayoutLocked: boolean; bgGridSize: number }>`
   position: relative;
 
   height: calc(100vh - 52px);

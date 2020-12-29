@@ -1,11 +1,26 @@
+import { FunctionComponent } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 
 import { telemetryType } from './types';
 
-import BaseView, { BaseViewHeading, BaseViewBody } from './BaseView';
+import BaseView, {
+  BaseViewProps,
+  BaseViewHeading,
+  BaseViewBody,
+  BaseViewHeadingProps,
+} from './BaseView';
 
-const TelemetryView = ({ telemetry, isDraggable, isUnlocked }) => {
+type TelemetryViewProps = {
+  telemetry?: any;
+} & BaseViewProps &
+  BaseViewHeadingProps;
+
+const TelemetryView: FunctionComponent<TelemetryViewProps> = ({
+  telemetry,
+  isDraggable = false,
+  isUnlocked = false,
+}) => {
   const latestPacket = telemetry[telemetry.length - 1];
   const telemetryLines = Object.keys(latestPacket.data).map((key) => (
     <span key={key}>
@@ -14,7 +29,7 @@ const TelemetryView = ({ telemetry, isDraggable, isUnlocked }) => {
     </span>
   ));
 
-  const telemetryLog = latestPacket.log.map((line, i) => (
+  const telemetryLog = latestPacket.log.map((line: any, i: number) => (
     <span key={i}>
       {line}
       <br />
@@ -39,6 +54,6 @@ TelemetryView.propTypes = {
   isUnlocked: PropTypes.bool,
 };
 
-const mapStateToProps = ({ telemetry }) => ({ telemetry });
+const mapStateToProps = ({ telemetry }: { telemetry: any }) => ({ telemetry });
 
 export default connect(mapStateToProps)(TelemetryView);

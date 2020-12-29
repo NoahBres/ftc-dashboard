@@ -9,6 +9,7 @@ import { ReactComponent as ChartSVG } from '../assets/icons/chart.svg';
 import { ReactComponent as ApiSVG } from '../assets/icons/api.svg';
 import { ReactComponent as SubjectSVG } from '../assets/icons/subject.svg';
 import { ReactComponent as WidgetSVG } from '../assets/icons/widgets.svg';
+import { ReactComponent as LoggingSVG } from '../assets/icons/format_align.svg';
 
 type ViewPickerProps = {
   isOpen: boolean;
@@ -27,21 +28,20 @@ const Container = styled.div.attrs({
   right: ${({ right }) => right};
 `;
 
-const CardButton = styled.button.attrs<{
-  isOpen: boolean;
-  customStyles: string;
-}>(({ isOpen, customStyles }) => ({
-  className: `rounded bg-white border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg flex justify-start items-center px-4 py-4 transform transition
-    hover:-translate-y-0.5 focus:-translate-y-0.5 focus:border-0 focus:outline-none ring-2 ring-transparent ${
-      isOpen
-        ? 'pointer-events-auto opacity-100 scale-100'
-        : 'pointer-events-none opacity-0 scale-75'
-    } ${customStyles}`,
-}))<{
+interface CardButtonProps {
   isOpen: boolean;
   customStyles: string;
   index: number;
-}>`
+}
+
+const CardButton = styled.button.attrs<CardButtonProps>((props) => ({
+  className: `rounded bg-white border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg flex justify-start items-center px-4 py-4 transform transition
+    hover:-translate-y-0.5 focus:-translate-y-0.5 focus:border-0 focus:outline-none ring-2 ring-transparent ${
+      props.isOpen
+        ? 'pointer-events-auto opacity-100 scale-100'
+        : 'pointer-events-none opacity-0 scale-75'
+    } ${props.customStyles}`,
+}))<CardButtonProps>`
   transition-delay: ${({ index }) => `${8 * Math.pow(index, 1.5)}ms`};
 `;
 
@@ -87,6 +87,13 @@ const listContent = [
     icon: <CameraSVG className="w-5 h-5" />,
     customStyles: 'focus:ring-purple-600',
     iconBg: 'bg-purple-500',
+  },
+  {
+    title: 'Logging View',
+    view: ConfigurableView.LOGGING_VIEW,
+    icon: <LoggingSVG className="w-6 h-6" />,
+    customStyles: 'focus:ring-pink-600',
+    iconBg: 'bg-pink-500',
   },
 ];
 
