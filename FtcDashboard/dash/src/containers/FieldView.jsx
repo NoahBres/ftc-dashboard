@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 
-import BaseView from './BaseView';
+import BaseView, { BaseViewHeading } from './BaseView';
 import Field from './Field';
 import AutoFitCanvas from '../components/AutoFitCanvas';
 
@@ -33,14 +33,10 @@ class FieldView extends React.Component {
 
   render() {
     return (
-      <BaseView showShadow={this.props.showShadow}>
-        <h2
-          className={`${
-            this.props.isDraggable ? 'grab-handle' : ''
-          } text-xl w-full py-2 font-bold`}
-        >
+      <BaseView isUnlocked={this.props.isUnlocked}>
+        <BaseViewHeading isDraggable={this.props.isDraggable}>
           Field
-        </h2>
+        </BaseViewHeading>
         <AutoFitCanvas
           ref={this.canvasRef}
           onResize={this.renderField}
@@ -57,7 +53,7 @@ FieldView.propTypes = {
   }).isRequired,
 
   isDraggable: PropTypes.bool,
-  showShadow: PropTypes.bool,
+  isUnlocked: PropTypes.bool,
 };
 
 const mapStateToProps = ({ telemetry }) => ({

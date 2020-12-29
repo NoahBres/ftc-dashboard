@@ -3,9 +3,9 @@ import { connect } from 'react-redux';
 
 import { telemetryType } from './types';
 
-import BaseView from './BaseView';
+import BaseView, { BaseViewHeading, BaseViewBody } from './BaseView';
 
-const TelemetryView = ({ telemetry, isDraggable, showShadow }) => {
+const TelemetryView = ({ telemetry, isDraggable, isUnlocked }) => {
   const latestPacket = telemetry[telemetry.length - 1];
   const telemetryLines = Object.keys(latestPacket.data).map((key) => (
     <span key={key}>
@@ -22,16 +22,12 @@ const TelemetryView = ({ telemetry, isDraggable, showShadow }) => {
   ));
 
   return (
-    <BaseView showShadow={showShadow}>
-      <h2
-        className={`${
-          isDraggable ? 'grab-handle' : ''
-        } text-xl w-full py-2 font-bold`}
-      >
-        Telemetry
-      </h2>
-      <p>{telemetryLines}</p>
-      <p>{telemetryLog}</p>
+    <BaseView isUnlocked={isUnlocked}>
+      <BaseViewHeading isDraggable={isDraggable}>Telemetry</BaseViewHeading>
+      <BaseViewBody>
+        <p>{telemetryLines}</p>
+        <p>{telemetryLog}</p>
+      </BaseViewBody>
     </BaseView>
   );
 };
@@ -40,7 +36,7 @@ TelemetryView.propTypes = {
   telemetry: telemetryType.isRequired,
 
   isDraggable: PropTypes.bool,
-  showShadow: PropTypes.bool,
+  isUnlocked: PropTypes.bool,
 };
 
 const mapStateToProps = ({ telemetry }) => ({ telemetry });

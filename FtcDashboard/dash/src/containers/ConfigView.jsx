@@ -2,9 +2,9 @@ import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 
 import CustomVariable from './CustomVariable';
-import IconGroup from '../components/IconGroup';
-import Icon from '../components/Icon';
-import BaseView from './BaseView';
+import BaseView, { BaseViewHeading, BaseViewBody } from './BaseView';
+import { ReactComponent as SaveSVG } from '../assets/icons/save.svg';
+import { ReactComponent as RefreshSVG } from '../assets/icons/refresh.svg';
 
 import {
   updateConfig,
@@ -20,32 +20,31 @@ const ConfigView = ({
   onSave,
   onChange,
   isDraggable,
-  showShadow,
+  isUnlocked,
 }) => {
   const sortedKeys = Object.keys(configRoot.__value || {});
 
   sortedKeys.sort();
 
   return (
-    <BaseView className="overflow-hidden pr-0 pb-0" showShadow={showShadow}>
-      <div className="flex justify-between items-center">
-        <h2
-          className={`${
-            isDraggable ? 'grab-handle' : ''
-          } text-xl w-full py-2 font-bold`}
-        >
+    <BaseView isUnlocked={isUnlocked}>
+      <div className="flex-center">
+        <BaseViewHeading isDraggable={isDraggable}>
           Configuration
-        </h2>
-        <IconGroup>
-          <Icon
-            icon="save"
-            size="small"
-            onClick={() => onSave(getModifiedDiff(configRoot))}
-          />
-          <Icon icon="refresh" size="small" onClick={onRefresh} />
-        </IconGroup>
+        </BaseViewHeading>
+        <div className="flex items-center mr-3 space-x-1">
+          <button className="icon-btn w-8 h-8">
+            <SaveSVG
+              className="w-6 h-6"
+              onClick={() => onSave(getModifiedDiff(configRoot))}
+            />
+          </button>
+          <button className="icon-btn w-8 h-8">
+            <RefreshSVG className="w-6 h-6" onClick={onRefresh} />
+          </button>
+        </div>
       </div>
-      <div style={{ height: 'calc(100% - 52px', overflow: 'auto' }}>
+      <BaseViewBody>
         <table className="block h-full">
           <tbody>
             {sortedKeys.map((key) => (
@@ -73,7 +72,7 @@ const ConfigView = ({
             ))}
           </tbody>
         </table>
-      </div>
+      </BaseViewBody>
     </BaseView>
   );
 };
@@ -85,7 +84,7 @@ ConfigView.propTypes = {
   onSave: PropTypes.func.isRequired,
 
   isDraggable: PropTypes.bool,
-  showShadow: PropTypes.bool,
+  isUnlocked: PropTypes.bool,
 };
 
 const mapStateToProps = ({ config }) => config;

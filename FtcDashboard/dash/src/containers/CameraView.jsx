@@ -3,9 +3,8 @@ import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 
 import AutoFitCanvas from '../components/AutoFitCanvas';
-import IconGroup from '../components/IconGroup';
-import Icon from '../components/Icon';
-import BaseView from './BaseView';
+import { ReactComponent as RefreshSVG } from '../assets/icons/refresh.svg';
+import BaseView, { BaseViewHeading, BaseViewBody } from './BaseView';
 
 class CameraView extends React.Component {
   constructor(props) {
@@ -32,7 +31,7 @@ class CameraView extends React.Component {
   }
 
   renderImage() {
-    if (this.ctx) {
+    if (this.ctx && this.props.imageStr.length > 0) {
       const canvas = this.canvasRef.current;
 
       // eslint-disable-next-line
@@ -64,28 +63,25 @@ class CameraView extends React.Component {
 
   render() {
     return (
-      <BaseView showShadow={this.props.showShadow}>
+      <BaseView isUnlocked={this.props.isUnlocked}>
         <div className="flex justify-between items-center">
-          <h2
-            className={`${
-              this.props.isDraggable ? 'grab-handle' : ''
-            } text-xl w-full py-2 font-bold`}
-          >
+          <BaseViewHeading isDraggable={this.props.isDraggable}>
             Camera
-          </h2>
-          <IconGroup>
-            <Icon
-              onClick={() =>
-                this.setState({ rotation: (this.state.rotation + 1) % 4 })
-              }
-              icon="refresh"
-              size="small"
-            />
-          </IconGroup>
+          </BaseViewHeading>
+          <button
+            className="icon-btn w-8 h-8 mr-3"
+            onClick={() =>
+              this.setState({ rotation: (this.state.rotation + 1) % 4 })
+            }
+          >
+            <RefreshSVG className="w-6 h-6" />
+          </button>
         </div>
-        <div className="canvas-container">
-          <AutoFitCanvas ref={this.canvasRef} onResize={this.renderImage} />
-        </div>
+        <BaseViewBody>
+          <div style={{ height: '100%', minHeight: '10rem' }}>
+            <AutoFitCanvas ref={this.canvasRef} onResize={this.renderImage} />
+          </div>
+        </BaseViewBody>
       </BaseView>
     );
   }
@@ -95,7 +91,7 @@ CameraView.propTypes = {
   imageStr: PropTypes.string.isRequired,
 
   isDraggable: PropTypes.bool,
-  showShadow: PropTypes.bool,
+  isUnlocked: PropTypes.bool,
 };
 
 const mapStateToProps = ({ camera }) => ({

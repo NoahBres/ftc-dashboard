@@ -27,12 +27,12 @@ class Dashboard extends Component {
   render() {
     return (
       <div>
-        <header className="bg-blue-600 border-b-6 border-red-500 px-3 py-1 text-white">
+        <header className="bg-blue-600 px-3 py-1 text-white">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">FTC Dashboard</h1>
+            <h1 className="text-2xl font-medium">FTC Dashboard</h1>
             <IconGroup>
               <select
-                className="text-black text-sm rounded py-1 bg-blue-100 border-blue-300"
+                className="text-black text-sm rounded py-1 bg-blue-100 border-blue-300 focus:ring focus:ring-blue-200"
                 style={{ margin: '0px 8px 0px 8px' }}
                 value={this.props.layoutPreset}
                 onChange={(evt) =>
@@ -40,7 +40,7 @@ class Dashboard extends Component {
                 }
               >
                 {Object.keys(LayoutPreset)
-                  .filter((key) => typeof LayoutPreset[key] == 'string')
+                  .filter((key) => typeof LayoutPreset[key] === 'string')
                   .map((key) => (
                     <option key={key} value={key}>
                       {LayoutPreset.getName(key)}
@@ -74,11 +74,7 @@ class Dashboard extends Component {
 Dashboard.propTypes = {
   isConnected: PropTypes.bool.isRequired,
   pingTime: PropTypes.number.isRequired,
-
-  // This should be
-  // PropTypes.oneOf(Object.keys(LayoutPreset)).isRequired
-  // but for some reason it breaks
-  layoutPreset: PropTypes.any.isRequired,
+  layoutPreset: PropTypes.oneOf(Object.keys(LayoutPreset)).isRequired,
   dispatch: PropTypes.func.isRequired,
 };
 
