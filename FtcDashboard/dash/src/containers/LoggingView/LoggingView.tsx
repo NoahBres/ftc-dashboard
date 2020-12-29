@@ -227,7 +227,6 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     // offload the process of rebuilding the log into a worker
     // because it's fairly intensive and halts the ui
     const ASYNC_FILTERED_THRESHOLD = 20000;
-    // const ASYNC_FILTERED_THRESHOLD = 500;
 
     if (
       activeOpModeStatus !== OpModeStatus.RUNNING &&
@@ -409,7 +408,7 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
         </div>
       </div>
       <BaseViewBody>
-        <div className="space-x-2 pl-3 px-2 py-2 pb-3 w-full overflow-x-auto whitespace-nowrap">
+        <div className="w-full px-2 py-2 pb-3 pl-3 space-x-2 overflow-x-auto whitespace-nowrap">
           {selectedTags.map((e, index) => (
             <button
               key={e.tag}
