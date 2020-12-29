@@ -52,7 +52,6 @@ class GraphView extends Component {
 
   handleDocumentKeydown(evt) {
     if (evt.code === 'Space' || evt.key === 'k') {
-      console.log('bruh');
       this.setState({
         ...this.state,
         graphPaused: !this.state.graphPaused,
@@ -142,7 +141,7 @@ class GraphView extends Component {
           </div>
         </div>
         {this.state.graphing ? (
-          <BaseViewBody>
+          <BaseViewBody className="pr-1">
             <div style={{ height: '100%', minHeight: '10rem' }}>
               {this.state.keys.length === 0 ? (
                 <div className="absolute top-0 left-0 w-full h-full flex-center pointer-events-none">
