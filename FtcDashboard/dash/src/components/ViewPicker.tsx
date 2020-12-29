@@ -9,6 +9,7 @@ import { ReactComponent as ChartSVG } from '../assets/icons/chart.svg';
 import { ReactComponent as ApiSVG } from '../assets/icons/api.svg';
 import { ReactComponent as SubjectSVG } from '../assets/icons/subject.svg';
 import { ReactComponent as WidgetSVG } from '../assets/icons/widgets.svg';
+import { ReactComponent as LoggingSVG } from '../assets/icons/format_align.svg';
 
 type ViewPickerProps = {
   isOpen: boolean;
@@ -90,7 +91,7 @@ const listContent = [
   {
     title: 'Logging View',
     view: ConfigurableView.LOGGING_VIEW,
-    icon: <SubjectSVG className="w-5 h-5" />,
+    icon: <LoggingSVG className="w-6 h-6" />,
     customStyles: 'focus:ring-pink-600',
     iconBg: 'bg-pink-500',
   },
