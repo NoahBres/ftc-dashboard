@@ -11,7 +11,10 @@ const initialState: Telemetry = [
   },
 ];
 
-const telemetry = (state = initialState, action: ReceiveTelemetryAction) => {
+const telemetryReducer = (
+  state = initialState,
+  action: ReceiveTelemetryAction,
+) => {
   switch (action.type) {
     case RECEIVE_TELEMETRY:
       return action.telemetry;
@@ -20,4 +23,4 @@ const telemetry = (state = initialState, action: ReceiveTelemetryAction) => {
   }
 };
 
-export default telemetry;
+export default telemetryReducer;
