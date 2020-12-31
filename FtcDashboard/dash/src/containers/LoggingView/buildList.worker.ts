@@ -1,6 +1,6 @@
 import { TelemetryStoreItem, LogItem } from './LoggingView';
 
-export function buildList(
+export default function buildList(
   telemetryStore: TelemetryStoreItem[],
   selectedTags: string[],
 ): LogItem[] {
