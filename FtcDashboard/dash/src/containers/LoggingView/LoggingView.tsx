@@ -3,6 +3,8 @@ import { connect } from 'react-redux';
 
 import { v4 as uuid4 } from 'uuid';
 
+import { Values } from '../../typeHelpers';
+
 import BaseView, {
   BaseViewProps,
   BaseViewHeading,
@@ -29,7 +31,7 @@ import { ReactComponent as LoopSVG } from '../../assets/icons/autorenew.svg';
 type LoggingViewProps = {
   telemetry?: Telemetry;
   activeOpMode?: string;
-  activeOpModeStatus?: OpModeStatus;
+  activeOpModeStatus?: Values<typeof OpModeStatus>;
   opModeList?: string[];
 } & BaseViewProps &
   BaseViewHeadingProps;

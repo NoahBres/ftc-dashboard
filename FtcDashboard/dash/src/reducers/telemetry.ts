@@ -1,6 +1,8 @@
 import { RECEIVE_TELEMETRY } from '../actions/telemetry';
 
-const initialState = [
+import { Telemetry } from '../containers/types';
+
+const initialState: Telemetry = [
   {
     timestamp: 0,
     data: {},
@@ -11,7 +13,7 @@ const initialState = [
   },
 ];
 
-const telemetry = (state = initialState, action) => {
+const telemetry = (state = initialState, action: any) => {
   switch (action.type) {
     case RECEIVE_TELEMETRY:
       return action.telemetry;
