@@ -17,7 +17,7 @@ import {
   saveConfig,
   refreshConfig,
   getModifiedDiff,
-} from '../actions/config';
+} from '../redux/actions/config';
 import VariableType from '../enums/VariableType';
 
 type ConfigViewProps = {

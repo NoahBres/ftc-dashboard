@@ -1,7 +1,7 @@
 import { RECEIVE_ROBOT_STATUS, RECEIVE_OP_MODE_LIST } from '../actions/status';
-import OpModeStatus from '../enums/OpModeStatus';
+import OpModeStatus from '../../enums/OpModeStatus';
 
-import { Values } from '../typeHelpers';
+import { Values } from '../../typeHelpers';
 
 export type Status = {
   available: boolean;
