@@ -1,4 +1,9 @@
-import { RECEIVE_ROBOT_STATUS, RECEIVE_OP_MODE_LIST } from '../actions/status';
+import {
+  RECEIVE_ROBOT_STATUS,
+  RECEIVE_OP_MODE_LIST,
+  ReceiveRobotStatusAction,
+  ReceiveOpModeListAction,
+} from '../actions/status';
 import OpModeStatus from '../../enums/OpModeStatus';
 
 import { Values } from '../../typeHelpers';
@@ -21,7 +26,10 @@ const initialState = {
   errorMessage: '',
 };
 
-const telemetry = (state = initialState, action: any) => {
+const telemetry = (
+  state = initialState,
+  action: ReceiveRobotStatusAction | ReceiveOpModeListAction,
+) => {
   switch (action.type) {
     case RECEIVE_ROBOT_STATUS:
       return {
