@@ -17,7 +17,10 @@ import { DateToHHMMSS } from './DateFormatting';
 import useDelayedTooltip from '../../hooks/useDelayedTooltip';
 import Tooltip from '../../components/Tooltip';
 
+import useWorker from '../../hooks/useWorker';
 import useCancellablePromise from '../../hooks/useCancellablePromise';
+
+import buildList from './buildList.worker';
 
 import { ReactComponent as DownloadSVG } from '../../assets/icons/file_download.svg';
 import { ReactComponent as DownloadOffSVG } from '../../assets/icons/file_download_off.svg';
@@ -86,6 +89,8 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
 
   const [isPromiseLoading, setIsPromiseLoading] = useState(false);
   const { newCancellablePromise, cancelAllPromises } = useCancellablePromise();
+
+  const buildListWorker = useWorker(buildList);
 
   const downloadButtonRef = useRef(null);
   const isShowingDownloadTooltip = useDelayedTooltip(0.5, downloadButtonRef);
@@ -219,10 +224,14 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   };
 
   const updateFilteredLogs = () => {
-    // Threshold at which we switch switch to async filtering and
+    // Threshold at which we switch to async filtering and
     // offload the process of rebuilding the log into a worker
     // because it's fairly intensive and halts the ui
     const ASYNC_FILTERED_THRESHOLD = 20000;
+
+    const selectedTagKeys = selectedTags
+      .filter((e) => e.isChecked)
+      .map((e) => e.tag);
 
     if (
       activeOpModeStatus !== OpModeStatus.RUNNING &&
@@ -230,32 +239,11 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     ) {
       setIsPromiseLoading(true);
       cancelAllPromises();
-      // newCancellablePromise(
-      //   buildList.buildList(
-      //     telemetryStore,
-      //     selectedTags.filter((e) => e.isChecked).map((e) => e.tag),
-      //   ),
-      // )
-      //   .then((result: any) => setFilteredLogs(result as LogItem[]))
-      //   .catch((e) => console.log(e));
+      newCancellablePromise(buildListWorker(telemetryStore, selectedTagKeys))
+        .then((result) => setFilteredLogs(result))
+        .catch((e) => console.error(e));
     } else {
-      const newFilteredLogs = telemetryStore.reduce((acc, curr) => {
-        const newLogs = curr.data
-          .filter((e) =>
-            selectedTags
-              .filter((e) => e.isChecked)
-              .map((e) => e.tag)
-              .includes(e.tag),
-          )
-          .map((e) => ({
-            timestamp: curr.timestamp,
-            tag: e.tag,
-            data: e.data,
-          }));
-
-        return [...acc, ...newLogs];
-      }, [] as LogItem[]);
-      setFilteredLogs(newFilteredLogs);
+      setFilteredLogs(buildList(telemetryStore, selectedTagKeys));
     }
   };
 
@@ -322,7 +310,10 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
       activeOpModeStatus !== OpModeStatus.RUNNING
     ) {
       return 'No logs to download';
-    } else if (activeOpModeStatus === OpModeStatus.RUNNING) {
+    } else if (
+      activeOpModeStatus === OpModeStatus.RUNNING &&
+      activeOpMode !== STOP_OP_MODE_TAG
+    ) {
       return 'Cannot download logs while OpMode is running';
     } else if (selectedTags.every((e) => !e.isChecked)) {
       return 'Select the tags you would like in your CSV download';
