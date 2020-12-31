@@ -1,14 +1,14 @@
-import { applyMiddleware, createStore } from 'redux';
+import { applyMiddleware, createStore, compose } from 'redux';
 import { createLogger } from 'redux-logger';
 import thunk from 'redux-thunk';
 
-import gamepadMiddleware from './middleware/gamepadMiddleware';
-import socketMiddleware from './middleware/socketMiddleware';
-import storageMiddleware from './middleware/storageMiddleware';
-import reducer from './reducers/index';
-import { RECEIVE_PING_TIME } from './actions/socket';
-import { RECEIVE_TELEMETRY } from './actions/telemetry';
-import { RECEIVE_ROBOT_STATUS, GET_ROBOT_STATUS } from './actions/status';
+import gamepadMiddleware from './store/middleware/gamepadMiddleware';
+import socketMiddleware from './store/middleware/socketMiddleware';
+import storageMiddleware from './store/middleware/storageMiddleware';
+import reducer from './store/reducers/index';
+import { RECEIVE_PING_TIME } from './store/actions/socket';
+import { RECEIVE_TELEMETRY } from './store/actions/telemetry';
+import { RECEIVE_ROBOT_STATUS, GET_ROBOT_STATUS } from './store/actions/status';
 
 const HIDDEN_ACTIONS = [
   RECEIVE_PING_TIME,
