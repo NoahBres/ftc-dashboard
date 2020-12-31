@@ -1,9 +1,4 @@
-import {
-  RECEIVE_TELEMETRY,
-  ReceiveTelemetryAction,
-} from '../actions/telemetry';
-
-import { Telemetry } from '../../containers/types';
+import { ReceiveTelemetryAction, RECEIVE_TELEMETRY, Telemetry } from '../types';
 
 const initialState: Telemetry = [
   {
