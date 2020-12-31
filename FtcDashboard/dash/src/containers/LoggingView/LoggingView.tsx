@@ -17,7 +17,6 @@ import { DateToHHMMSS } from './DateFormatting';
 import useDelayedTooltip from '../../hooks/useDelayedTooltip';
 import Tooltip from '../../components/Tooltip';
 
-import useBuildListWorker from './useBuildListWorker';
 import useCancellablePromise from '../../hooks/useCancellablePromise';
 
 import { ReactComponent as DownloadSVG } from '../../assets/icons/file_download.svg';
@@ -90,8 +89,6 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
 
   const downloadButtonRef = useRef(null);
   const isShowingDownloadTooltip = useDelayedTooltip(0.5, downloadButtonRef);
-
-  const buildList = useBuildListWorker();
 
   const clearPastTelemetry = () => {
     storedTags.current = [];
@@ -233,14 +230,14 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
     ) {
       setIsPromiseLoading(true);
       cancelAllPromises();
-      newCancellablePromise(
-        buildList.buildList(
-          telemetryStore,
-          selectedTags.filter((e) => e.isChecked).map((e) => e.tag),
-        ),
-      )
-        .then((result: any) => setFilteredLogs(result as LogItem[]))
-        .catch((e) => console.log(e));
+      // newCancellablePromise(
+      //   buildList.buildList(
+      //     telemetryStore,
+      //     selectedTags.filter((e) => e.isChecked).map((e) => e.tag),
+      //   ),
+      // )
+      //   .then((result: any) => setFilteredLogs(result as LogItem[]))
+      //   .catch((e) => console.log(e));
     } else {
       const newFilteredLogs = telemetryStore.reduce((acc, curr) => {
         const newLogs = curr.data

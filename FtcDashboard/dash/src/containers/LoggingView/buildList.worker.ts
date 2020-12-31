@@ -1,7 +1,3 @@
-// Explanation on why workers have a very weird shim going on
-// requiring a hook middle man
-// https://github.com/developit/workerize-loader/issues/5#issuecomment-570663710
-
 import { TelemetryStoreItem, LogItem } from './LoggingView';
 
 export function buildList(
