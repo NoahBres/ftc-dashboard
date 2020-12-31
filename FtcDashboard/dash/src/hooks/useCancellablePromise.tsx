@@ -5,10 +5,10 @@ interface CancelableWrapper {
   cancel: () => void;
 }
 
-function cancellable(promise: Promise<any | void>) {
+function cancellable<T>(promise: Promise<T>) {
   let isCanceled = false;
 
-  const wrappedPromise = new Promise((resolve, reject) => {
+  const wrappedPromise = new Promise<T>((resolve, reject) => {
     promise
       .then((val) => (isCanceled ? reject(isCanceled) : resolve(val)))
       .catch((error) => (isCanceled ? reject(isCanceled) : reject(error)));
@@ -32,7 +32,7 @@ export default function useCancellablePromise() {
     };
   }, []);
 
-  function newCancellablePromise(promise: Promise<any | void>) {
+  function newCancellablePromise<T>(promise: Promise<T>) {
     const cancelablePromise = cancellable(promise);
     promises.current.push(cancelablePromise);
 
