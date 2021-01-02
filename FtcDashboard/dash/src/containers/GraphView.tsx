@@ -19,19 +19,43 @@ import { ReactComponent as PauseSVG } from '../assets/icons/pause.svg';
 
 import { validateInt } from '../components/inputs/validation';
 import { DEFAULT_OPTIONS } from './Graph';
+import { STOP_OP_MODE_TAG } from './types';
+
+type GraphData = [GraphItemTime, ...GraphItem[]];
+
+type GraphItem = {
+  name: string;
+  value: number;
+};
+
+type GraphItemTime = {
+  name: 'time';
+} & GraphItem;
 
 type GraphViewState = {
   graphing: boolean;
   graphPaused: boolean;
+
   keys: string[];
+  keyCache: string[];
+
   windowMs: {
     value: number;
     valid: boolean;
   };
+  delayMs: {
+    value: number;
+    valid: boolean;
+  };
+
+  graphData: GraphData[];
+
+  shouldShowGraph: boolean;
 };
 
 const mapStateToProps = (state: RootState) => ({
   telemetry: state.telemetry,
+  status: state.status,
 });
 
 const connector = connect(mapStateToProps);
@@ -42,6 +66,7 @@ type GraphViewProps = ConnectedProps<typeof connector> &
 
 class GraphView extends Component<GraphViewProps, GraphViewState> {
   containerRef: React.RefObject<HTMLDivElement>;
+  graphQueue: GraphData[];
 
   constructor(props: GraphViewProps) {
     super(props);
@@ -49,17 +74,110 @@ class GraphView extends Component<GraphViewProps, GraphViewState> {
     this.state = {
       graphing: false,
       graphPaused: false,
+
       keys: [],
+      keyCache: [],
       windowMs: {
         value: DEFAULT_OPTIONS.windowMs,
         valid: true,
       },
+      delayMs: {
+        value: DEFAULT_OPTIONS.delayMs,
+        valid: true,
+      },
+
+      graphData: [],
+
+      shouldShowGraph: false,
     };
+
+    this.graphQueue = [];
 
     this.containerRef = React.createRef();
 
     this.handleClick = this.handleClick.bind(this);
     this.handleDocumentKeydown = this.handleDocumentKeydown.bind(this);
+  }
+
+  componentDidUpdate(prevProps: GraphViewProps) {
+    const { telemetry } = this.props;
+
+    if (
+      prevProps.status.activeOpMode === STOP_OP_MODE_TAG &&
+      this.props.status.activeOpMode !== STOP_OP_MODE_TAG
+    ) {
+      this.setState({
+        ...this.state,
+        shouldShowGraph: false,
+        keyCache: [],
+      });
+
+      return;
+    }
+
+    if (telemetry === prevProps.telemetry) return;
+
+    let lastTimeStamp = 0;
+    if (telemetry.length > 0) {
+      lastTimeStamp = telemetry[telemetry.length - 1].timestamp;
+    }
+
+    const newData: GraphData[] = telemetry.map((packet) => [
+      {
+        name: 'time',
+        value: packet.timestamp,
+      },
+      ...Object.keys(packet.data).map((key) => {
+        return {
+          name: key,
+          value: parseFloat(packet.data[key]),
+        };
+      }),
+    ]);
+
+    this.graphQueue.push(...newData);
+
+    const newItems: GraphData[] = [];
+
+    let newKeyCache: string[] = [];
+
+    for (let i = this.graphQueue.length - 1; i >= 0; i--) {
+      if (
+        lastTimeStamp - this.graphQueue[i][0].value >
+        this.state.delayMs.value
+      ) {
+        newKeyCache = [
+          ...newKeyCache,
+          ...this.graphQueue[i]
+            .filter(
+              (e) =>
+                e.name !== 'time' &&
+                !this.state.keyCache.includes(e.name) &&
+                !newKeyCache.includes(e.name),
+            )
+            .map((e) => e.name),
+        ];
+
+        const filtered = this.graphQueue[i].filter(
+          (e) =>
+            e.name === 'time' ||
+            [...this.state.keys, ...newKeyCache].includes(e.name),
+        ) as GraphData;
+
+        if (filtered.length > 1) newItems.push(filtered);
+
+        this.graphQueue.splice(i, 1);
+      }
+    }
+
+    if (newItems.length !== 0) {
+      this.setState({
+        ...this.state,
+        shouldShowGraph: true,
+        graphData: newItems,
+        keyCache: [...this.state.keyCache, ...newKeyCache],
+      });
+    }
   }
 
   componentDidMount() {
@@ -113,24 +231,6 @@ class GraphView extends Component<GraphViewProps, GraphViewState> {
   }
 
   render() {
-    const { telemetry } = this.props;
-    const latestPacket = telemetry[telemetry.length - 1];
-
-    const graphData = telemetry.map((packet) => [
-      {
-        name: 'time',
-        value: packet.timestamp,
-      },
-      ...Object.keys(packet.data)
-        .filter((key) => this.state.keys.includes(key))
-        .map((key) => {
-          return {
-            name: key,
-            value: parseFloat(packet.data[key]),
-          };
-        }),
-    ]);
-
     return (
       <BaseView
         className="flex flex-col overflow-auto"
@@ -141,6 +241,11 @@ class GraphView extends Component<GraphViewProps, GraphViewState> {
         <div className="flex-center">
           <BaseViewHeading isDraggable={this.props.isDraggable}>
             Graph
+            {this.state.delayMs.value > 0 && (
+              <span className="ml-1 text-neutral-gray-500 text-lg">
+                | Delay: {this.state.delayMs.value / 1000}s
+              </span>
+            )}
           </BaseViewHeading>
           <div className="flex items-center mr-3 space-x-1">
             {this.state.graphing && this.state.keys.length !== 0 ? (
@@ -179,7 +284,7 @@ class GraphView extends Component<GraphViewProps, GraphViewState> {
                 </div>
               ) : (
                 <GraphCanvas
-                  data={graphData}
+                  data={this.state.graphData}
                   options={{
                     windowMs: this.state.windowMs.valid
                       ? this.state.windowMs.value
@@ -190,7 +295,7 @@ class GraphView extends Component<GraphViewProps, GraphViewState> {
               )}
             </div>
           </BaseViewBody>
-        ) : Object.keys(latestPacket.data).length > 0 ? (
+        ) : this.state.shouldShowGraph ? (
           <BaseViewBody>
             <p className="text-lg text-center">
               Press the upper-right button to graph selected keys over time
@@ -198,9 +303,7 @@ class GraphView extends Component<GraphViewProps, GraphViewState> {
             <h3 className="mt-4">Telemetry to graph:</h3>
             <div className="ml-3">
               <MultipleCheckbox
-                arr={Object.keys(latestPacket.data).filter(
-                  (key) => !isNaN(parseFloat(latestPacket.data[key])),
-                )}
+                arr={this.state.keyCache}
                 onChange={(selected: string[]) =>
                   this.setState({ keys: selected })
                 }
@@ -229,12 +332,41 @@ class GraphView extends Component<GraphViewProps, GraphViewState> {
                             valid: boolean;
                           }) =>
                             this.setState({
+                              ...this.state,
                               windowMs: {
                                 value,
                                 valid,
                               },
                             })
                           }
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Delay (ms)</td>
+                      <td>
+                        <TextInput
+                          value={this.state.delayMs.value}
+                          valid={this.state.delayMs.valid}
+                          validate={validateInt}
+                          onChange={({
+                            value,
+                            valid,
+                          }: {
+                            value: number;
+                            valid: boolean;
+                          }) => {
+                            this.graphQueue = [];
+
+                            this.setState({
+                              ...this.state,
+                              delayMs: {
+                                value,
+                                valid,
+                              },
+                              graphData: [],
+                            });
+                          }}
                         />
                       </td>
                     </tr>
