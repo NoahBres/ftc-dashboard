@@ -7,6 +7,8 @@ type ManagedWorker = {
   errorListener: (this: AbstractWorker, ev: ErrorEvent) => void;
 };
 
+// Needs this because the Promise<ReturnType> base type requires an 'any'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function useWorker<T extends (...args: any) => any>(
   workerProp: T,
 ) {

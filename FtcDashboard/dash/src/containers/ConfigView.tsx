@@ -1,6 +1,5 @@
 import { FunctionComponent } from 'react';
-import PropTypes from 'prop-types';
-import { connect } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import CustomVariable from './CustomVariable';
 import BaseView, {
@@ -19,23 +18,22 @@ import {
   getModifiedDiff,
 } from '../store/actions/config';
 import VariableType from '../enums/VariableType';
+import { RootState } from '../store/reducers';
+import { Config, ConfigCustom } from '../store/types';
 
-type ConfigViewProps = {
-  configRoot?: any;
-  onRefresh?: any;
-  onSave?: any;
-  onChange?: any;
-} & BaseViewProps &
-  BaseViewHeadingProps;
+type ConfigViewProps = BaseViewProps & BaseViewHeadingProps;
 
 const ConfigView: FunctionComponent<ConfigViewProps> = ({
-  configRoot,
-  onRefresh,
-  onSave,
-  onChange,
   isDraggable = false,
   isUnlocked = false,
 }: ConfigViewProps) => {
+  const dispatch = useDispatch();
+  const configRoot = useSelector((state: RootState) => state.config.configRoot);
+
+  const onRefresh = () => dispatch(refreshConfig());
+  const onSave = (configDiff: Config) => dispatch(saveConfig(configDiff));
+  const onChange = (configDiff: Config) => dispatch(updateConfig(configDiff));
+
   const sortedKeys = Object.keys(configRoot.__value || {});
 
   sortedKeys.sort();
@@ -65,16 +63,16 @@ const ConfigView: FunctionComponent<ConfigViewProps> = ({
               <CustomVariable
                 key={key}
                 name={key}
-                value={configRoot.__value[key].__value || {}}
-                onChange={(newValue: any) => {
+                value={(configRoot as ConfigCustom).__value[key].__value || {}}
+                onChange={(newValue: Config) => {
                   onChange({
                     __type: VariableType.CUSTOM,
                     __value: {
                       [key]: newValue,
                     },
-                  });
+                  } as ConfigCustom);
                 }}
-                onSave={(newValue: any) => {
+                onSave={(newValue: Config) => {
                   onSave({
                     __type: VariableType.CUSTOM,
                     __value: {
@@ -91,28 +89,4 @@ const ConfigView: FunctionComponent<ConfigViewProps> = ({
   );
 };
 
-ConfigView.propTypes = {
-  configRoot: PropTypes.object.isRequired,
-  onRefresh: PropTypes.func.isRequired,
-  onChange: PropTypes.func.isRequired,
-  onSave: PropTypes.func.isRequired,
-
-  isDraggable: PropTypes.bool,
-  isUnlocked: PropTypes.bool,
-};
-
-const mapStateToProps = ({ config }: { config: any }) => config;
-
-const mapDispatchToProps = (dispatch: any) => ({
-  onRefresh: () => {
-    dispatch(refreshConfig());
-  },
-  onSave: (configDiff: any) => {
-    dispatch(saveConfig(configDiff));
-  },
-  onChange: (configDiff: any) => {
-    dispatch(updateConfig(configDiff));
-  },
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(ConfigView);
+export default ConfigView;

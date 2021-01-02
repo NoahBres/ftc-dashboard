@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 interface CancelableWrapper {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   promise: Promise<any | void>;
   cancel: () => void;
 }

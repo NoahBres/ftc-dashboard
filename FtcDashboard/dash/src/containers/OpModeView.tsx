@@ -1,9 +1,10 @@
 import { Component, ChangeEvent } from 'react';
-import { connect } from 'react-redux';
+import { connect, ConnectedProps } from 'react-redux';
 import PropTypes from 'prop-types';
 
 import styled from 'styled-components';
 
+import { RootState } from '../store/reducers';
 import { initOpMode, startOpMode, stopOpMode } from '../store/actions/opmode';
 import OpModeStatus from '../enums/OpModeStatus';
 import { STOP_OP_MODE_TAG } from './types';
@@ -17,26 +18,36 @@ import BaseView, {
   BaseViewHeadingProps,
 } from './BaseView';
 
-interface OpModeViewState {
+type OpModeViewState = {
   selectedOpMode: string;
-}
+};
 
-type OpModeViewProps = {
-  available: boolean;
-  activeOpMode: string;
-  activeOpModeStatus: any;
-  opModeList: any;
-  warningMessage: string;
-  errorMessage: string;
-  dispatch: any;
-  gamepad1Connected: boolean;
-  gamepad2Connected: boolean;
-} & BaseViewProps &
+const mapStateToProps = (state: RootState) => ({
+  available: state.status.available,
+  activeOpMode: state.status.activeOpMode,
+  activeOpModeStatus: state.status.activeOpModeStatus,
+  opModeList: state.status.opModeList,
+  warningMessage: state.status.warningMessage,
+  errorMessage: state.status.errorMessage,
+  gamepad1Connected: state.gamepad.gamepad1Connected,
+  gamepad2Connected: state.gamepad.gamepad2Connected,
+});
+
+const mapDispatchToProps = {
+  initOpMode: (opModeName: string) => initOpMode(opModeName),
+  startOpMode: () => startOpMode(),
+  stopOpMode: () => stopOpMode(),
+};
+
+const connector = connect(mapStateToProps, mapDispatchToProps);
+
+type OpModeViewProps = ConnectedProps<typeof connector> &
+  BaseViewProps &
   BaseViewHeadingProps;
 
-interface ActionButtonProps {
+type ActionButtonProps = {
   customStyle: string;
-}
+};
 const ActionButton = styled.button.attrs<ActionButtonProps>((props) => ({
   className: `ml-3 py-1 px-4 border rounded-md shadow-md ${props.customStyle}`,
 }))<ActionButtonProps>``;
@@ -53,16 +64,6 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
   }
 
   static propTypes = {
-    available: PropTypes.bool.isRequired,
-    activeOpMode: PropTypes.string.isRequired,
-    activeOpModeStatus: PropTypes.oneOf(Object.keys(OpModeStatus)),
-    opModeList: PropTypes.arrayOf(PropTypes.string).isRequired,
-    warningMessage: PropTypes.string.isRequired,
-    errorMessage: PropTypes.string.isRequired,
-    dispatch: PropTypes.func.isRequired,
-    gamepad1Connected: PropTypes.bool.isRequired,
-    gamepad2Connected: PropTypes.bool.isRequired,
-
     isDraggable: PropTypes.bool,
     isUnlocked: PropTypes.bool,
   };
@@ -97,9 +98,7 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
     return (
       <ActionButton
         customStyle="bg-blue-200 border-blue-300"
-        onClick={() =>
-          this.props.dispatch(initOpMode(this.state.selectedOpMode))
-        }
+        onClick={() => this.props.initOpMode(this.state.selectedOpMode)}
       >
         Init
       </ActionButton>
@@ -110,7 +109,7 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
     return (
       <ActionButton
         customStyle="bg-green-200 border-green-300"
-        onClick={() => this.props.dispatch(startOpMode())}
+        onClick={() => this.props.startOpMode()}
       >
         Start
       </ActionButton>
@@ -121,7 +120,7 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
     return (
       <ActionButton
         customStyle="bg-red-200 border-red-300"
-        onClick={() => this.props.dispatch(stopOpMode())}
+        onClick={() => this.props.stopOpMode()}
       >
         Stop
       </ActionButton>
@@ -210,7 +209,7 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
             ) : (
               opModeList
                 .sort()
-                .map((opMode: any) => <option key={opMode}>{opMode}</option>)
+                .map((opMode: string) => <option key={opMode}>{opMode}</option>)
             )}
           </select>
           {this.renderButtons()}
@@ -226,15 +225,4 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
   }
 }
 
-const mapStateToProps = ({
-  status,
-  gamepad,
-}: {
-  status: any;
-  gamepad: any;
-}) => ({
-  ...status,
-  ...gamepad,
-});
-
-export default connect(mapStateToProps)(OpModeView as any);
+export default connector(OpModeView);

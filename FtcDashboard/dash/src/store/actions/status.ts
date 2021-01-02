@@ -1,5 +1,5 @@
 import {
-  Status,
+  StatusState,
   GetRobotStatusAction,
   ReceiveOpModeListAction,
   ReceiveRobotStatusAction,
@@ -13,7 +13,7 @@ export const getRobotStatus = (): GetRobotStatusAction => ({
 });
 
 export const receiveRobotStatus = (
-  status: Status,
+  status: StatusState,
 ): ReceiveRobotStatusAction => ({
   type: RECEIVE_ROBOT_STATUS,
   status,

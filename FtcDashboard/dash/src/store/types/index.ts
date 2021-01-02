@@ -73,7 +73,7 @@ export {
   RECEIVE_OP_MODE_LIST,
 } from './status';
 export type {
-  Status,
+  StatusState,
   GetRobotStatusAction,
   ReceiveRobotStatusAction,
   ReceiveOpModeListAction,
