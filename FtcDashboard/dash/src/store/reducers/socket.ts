@@ -1,14 +1,20 @@
 import {
-  RECEIVE_PING_TIME,
+  SocketState,
+  ReceiveConnectionStatusAction,
+  ReceivePingTimeAction,
   RECEIVE_CONNECTION_STATUS,
-} from '../actions/socket';
+  RECEIVE_PING_TIME,
+} from '../types';
 
-const initialState = {
+const initialState: SocketState = {
   isConnected: false,
   pingTime: 0,
 };
 
-const socket = (state = initialState, action) => {
+const socketReducer = (
+  state = initialState,
+  action: ReceivePingTimeAction | ReceiveConnectionStatusAction,
+) => {
   switch (action.type) {
     case RECEIVE_PING_TIME:
       return {
@@ -25,4 +31,4 @@ const socket = (state = initialState, action) => {
   }
 };
 
-export default socket;
+export default socketReducer;

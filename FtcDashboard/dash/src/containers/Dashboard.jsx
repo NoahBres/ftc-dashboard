@@ -6,8 +6,8 @@ import IconGroup from '../components/IconGroup';
 import Icon from '../components/Icon';
 
 import LayoutPreset from '../enums/LayoutPreset';
-import { connect, disconnect } from '../actions/socket';
-import { saveLayoutPreset, getLayoutPreset } from '../actions/settings';
+import { connect, disconnect } from '../store/actions/socket';
+import { saveLayoutPreset, getLayoutPreset } from '../store/actions/settings';
 
 class Dashboard extends Component {
   componentDidMount() {

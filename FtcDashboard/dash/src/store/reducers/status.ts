@@ -1,7 +1,13 @@
-import { RECEIVE_ROBOT_STATUS, RECEIVE_OP_MODE_LIST } from '../actions/status';
-import OpModeStatus from '../enums/OpModeStatus';
+import OpModeStatus from '../../enums/OpModeStatus';
+import {
+  ReceiveOpModeListAction,
+  ReceiveRobotStatusAction,
+  RECEIVE_OP_MODE_LIST,
+  RECEIVE_ROBOT_STATUS,
+  StatusState,
+} from '../types';
 
-const initialState = {
+const initialState: StatusState = {
   available: false,
   activeOpMode: '',
   activeOpModeStatus: OpModeStatus.STOPPED,
@@ -10,7 +16,10 @@ const initialState = {
   errorMessage: '',
 };
 
-const telemetry = (state = initialState, action) => {
+const statusReducer = (
+  state = initialState,
+  action: ReceiveRobotStatusAction | ReceiveOpModeListAction,
+) => {
   switch (action.type) {
     case RECEIVE_ROBOT_STATUS:
       return {
@@ -27,4 +36,4 @@ const telemetry = (state = initialState, action) => {
   }
 };
 
-export default telemetry;
+export default statusReducer;

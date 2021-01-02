@@ -1,20 +1,31 @@
 import { isEqual } from 'lodash';
+import { Dispatch } from 'redux';
+import {
+  GamepadConnectedAction,
+  GamepadDisonnectedAction,
+  ReceiveGamepadStateAction,
+  GAMEPAD_CONNECTED,
+  GAMEPAD_DISCONNECTED,
+  RECEIVE_GAMEPAD_STATE,
+  GamepadState,
+} from '../types';
 
-export const GAMEPAD_CONNECTED = 'GAMEPAD_CONNECTED';
-export const GAMEPAD_DISCONNECTED = 'GAMEPAD_DISCONNECTED';
-export const RECEIVE_GAMEPAD_STATE = 'RECEIVE_GAMEPAD_STATE';
-
-export const gamepadConnected = (user) => ({
+export const gamepadConnected = (user: number): GamepadConnectedAction => ({
   type: GAMEPAD_CONNECTED,
   user,
 });
 
-export const gamepadDisconnected = (user) => ({
+export const gamepadDisconnected = (
+  user: number,
+): GamepadDisonnectedAction => ({
   type: GAMEPAD_DISCONNECTED,
   user,
 });
 
-export const receiveGamepadState = (gamepad1, gamepad2) => ({
+export const receiveGamepadState = (
+  gamepad1: GamepadState,
+  gamepad2: GamepadState,
+): ReceiveGamepadStateAction => ({
   type: RECEIVE_GAMEPAD_STATE,
   gamepad1,
   gamepad2,
@@ -27,10 +38,14 @@ the watchdog on the RC (to reset the gamepads in case the connection is cut abru
 */
 const MAX_GAMEPAD_MS = 150;
 
-let lastGamepad1, lastGamepad2;
-let lastGamepadTimestamp;
+let lastGamepad1: GamepadState;
+let lastGamepad2: GamepadState;
+let lastGamepadTimestamp: number;
 
-export const sendGamepadState = (gamepad1, gamepad2) => (dispatch) => {
+export const sendGamepadState = (
+  gamepad1: GamepadState,
+  gamepad2: GamepadState,
+) => (dispatch: Dispatch<ReceiveGamepadStateAction>) => {
   const timestamp = Date.now();
   if (
     !isEqual(lastGamepad1, gamepad1) ||

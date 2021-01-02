@@ -5,6 +5,7 @@ import { FixedSizeList as List } from 'react-window';
 
 import { LogItem } from './LoggingView';
 import { DateToHHMMSS } from './DateFormatting';
+import { CSSProperties } from 'styled-components';
 
 interface CustomVirtualListProps {
   itemCount: number;
@@ -14,7 +15,7 @@ interface CustomVirtualListProps {
 interface VirtualListItem {
   data: LogItem[];
   index: number;
-  style: any;
+  style: CSSProperties;
 }
 
 const LIST_ITEM_HEIGHT = 35;

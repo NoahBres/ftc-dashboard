@@ -1,11 +1,20 @@
-import { GAMEPAD_CONNECTED, GAMEPAD_DISCONNECTED } from '../actions/gamepad';
+import {
+  GamepadConnectedAction,
+  GamepadConnectionState,
+  GamepadDisonnectedAction,
+  GAMEPAD_CONNECTED,
+  GAMEPAD_DISCONNECTED,
+} from '../types';
 
-const initialState = {
+const initialState: GamepadConnectionState = {
   gamepad1Connected: false,
   gamepad2Connected: false,
 };
 
-const gamepad = (state = initialState, action) => {
+const gamepadReducer = (
+  state: GamepadConnectionState = initialState,
+  action: GamepadConnectedAction | GamepadDisonnectedAction,
+): GamepadConnectionState => {
   switch (action.type) {
     case GAMEPAD_CONNECTED:
       if (action.user === 1) {
@@ -36,4 +45,4 @@ const gamepad = (state = initialState, action) => {
   }
 };
 
-export default gamepad;
+export default gamepadReducer;

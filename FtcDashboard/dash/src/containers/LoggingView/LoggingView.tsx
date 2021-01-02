@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, FunctionComponent } from 'react';
-import { connect } from 'react-redux';
+import { useSelector } from 'react-redux';
 
 import { v4 as uuid4 } from 'uuid';
 
@@ -9,7 +9,7 @@ import BaseView, {
   BaseViewBody,
   BaseViewHeadingProps,
 } from '../BaseView';
-import { STOP_OP_MODE_TAG, Telemetry } from '../types';
+import { STOP_OP_MODE_TAG } from '../types';
 import OpModeStatus from '../../enums/OpModeStatus';
 
 import CustomVirtualList from './CustomVirtualList';
@@ -25,15 +25,7 @@ import buildList from './buildList.worker';
 import { ReactComponent as DownloadSVG } from '../../assets/icons/file_download.svg';
 import { ReactComponent as DownloadOffSVG } from '../../assets/icons/file_download_off.svg';
 import { ReactComponent as LoopSVG } from '../../assets/icons/autorenew.svg';
-
-type LoggingViewProps = {
-  telemetry?: Telemetry;
-  activeOpMode?: string;
-  activeOpModeStatus?: OpModeStatus;
-  opModeList?: string[];
-} & BaseViewProps &
-  BaseViewHeadingProps;
-
+import { RootState } from '../../store/reducers';
 export interface TelemetryStoreItem {
   timestamp: number;
   data: TelemetryField[];
@@ -65,15 +57,17 @@ const PILL_COLORS = [
   'bg-green-500 border-green-600 focus-within:ring-green-600',
 ];
 
-const LoggingView: FunctionComponent<LoggingViewProps> = ({
-  telemetry,
-  activeOpMode,
-  activeOpModeStatus,
-  opModeList,
+type LoggingViewProps = BaseViewProps & BaseViewHeadingProps;
 
+const LoggingView: FunctionComponent<LoggingViewProps> = ({
   isDraggable = false,
   isUnlocked = false,
 }: LoggingViewProps) => {
+  const telemetry = useSelector((state: RootState) => state.telemetry);
+  const { activeOpMode, activeOpModeStatus, opModeList } = useSelector(
+    (state: RootState) => state.status,
+  );
+
   const storedTags = useRef<string[]>([]);
 
   const [telemetryStore, setTelemetryStore] = useState<TelemetryStoreItem[]>(
@@ -425,15 +419,4 @@ const LoggingView: FunctionComponent<LoggingViewProps> = ({
   );
 };
 
-const mapStateToProps = ({
-  telemetry,
-  status,
-}: {
-  telemetry: Telemetry;
-  status: any;
-}) => ({
-  telemetry,
-  ...status,
-});
-
-export default connect(mapStateToProps)(LoggingView);
+export default LoggingView;
