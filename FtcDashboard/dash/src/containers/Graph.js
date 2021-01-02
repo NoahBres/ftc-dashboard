@@ -4,6 +4,7 @@ import './canvas';
 // all dimensions in this file are *CSS* pixels unless otherwise stated
 export const DEFAULT_OPTIONS = {
   windowMs: 5000,
+  delayMs: 0,
   colors: ['#2979ff', '#dd2c00', '#4caf50', '#7c4dff', '#ffa000'],
   lineWidth: 2,
   padding: 15,
