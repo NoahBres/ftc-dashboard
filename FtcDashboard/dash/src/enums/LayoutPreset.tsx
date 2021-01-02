@@ -115,3 +115,5 @@ export default Object.freeze({
     LAYOUT_DETAILS[preset]?.content ??
     LAYOUT_DETAILS[LayoutPreset.DEFAULT].content,
 });
+
+export type LayoutPresetType = Values<typeof LayoutPreset>;

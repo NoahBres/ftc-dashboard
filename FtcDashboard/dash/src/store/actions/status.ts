@@ -1,5 +1,6 @@
 import {
   Status,
+  GetRobotStatusAction,
   ReceiveOpModeListAction,
   ReceiveRobotStatusAction,
   GET_ROBOT_STATUS,
@@ -7,7 +8,7 @@ import {
   RECEIVE_ROBOT_STATUS,
 } from '../types';
 
-export const getRobotStatus = () => ({
+export const getRobotStatus = (): GetRobotStatusAction => ({
   type: GET_ROBOT_STATUS,
 });
 

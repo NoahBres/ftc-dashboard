@@ -11,8 +11,9 @@ import BaseView, {
   BaseViewBody,
   BaseViewHeadingProps,
 } from '../BaseView';
-import { STOP_OP_MODE_TAG, Telemetry } from '../types';
+import { STOP_OP_MODE_TAG } from '../types';
 import OpModeStatus from '../../enums/OpModeStatus';
+import { Telemetry } from '../../store/types';
 
 import CustomVirtualList from './CustomVirtualList';
 import { DateToHHMMSS } from './DateFormatting';

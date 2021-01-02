@@ -26,6 +26,7 @@ export {
   RECEIVE_GAMEPAD_STATE,
 } from './gamepad';
 export type {
+  GamepadState,
   GamepadConnectionState,
   GamepadConnectedAction,
   GamepadDisonnectedAction,
