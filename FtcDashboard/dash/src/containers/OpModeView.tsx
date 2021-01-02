@@ -182,18 +182,20 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
           <BaseViewHeading isDraggable={this.props.isDraggable}>
             Op Mode
           </BaseViewHeading>
-          <IconGroup>
-            <Icon
-              opacity={gamepad1Connected ? 1.0 : 0.3}
-              icon="gamepad"
-              size="small"
-            />
-            <Icon
-              opacity={gamepad2Connected ? 1.0 : 0.3}
-              icon="gamepad"
-              size="small"
-            />
-          </IconGroup>
+          <div className="mr-3">
+            <IconGroup>
+              <Icon
+                opacity={gamepad1Connected ? 1.0 : 0.3}
+                icon="gamepad"
+                size="small"
+              />
+              <Icon
+                opacity={gamepad2Connected ? 1.0 : 0.3}
+                icon="gamepad"
+                size="small"
+              />
+            </IconGroup>
+          </div>
         </div>
         <BaseViewBody>
           <select

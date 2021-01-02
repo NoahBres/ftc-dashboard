@@ -61,7 +61,7 @@ const VIEW_MAP: { [key in ConfigurableView]: ReactElement } = {
 const LOCAL_STORAGE_LAYOUT_KEY = 'configurableLayoutStorage';
 
 const GRID_COL = 12;
-const GRID_ROW_HEIGHT = 60;
+const GRID_ROW_HEIGHT = 54;
 const GRID_MARGIN = 10;
 const GRID_ITEM_MIN_WIDTH = 3;
 const GRID_DOT_PADDING = 10;
