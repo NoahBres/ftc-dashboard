@@ -5,10 +5,12 @@ export interface BaseViewProps {
 }
 
 const BaseView = styled.div.attrs<BaseViewProps>((props) => ({
-  className: `h-full pl-4 pt-2 bg-white bg-opacity-75 transition-shadow ${
+  className: `pl-4 pt-2 bg-white bg-opacity-75 transition-shadow ${
     props.isUnlocked ? 'shadow-md rounded-md select-none' : ''
   }`,
-}))<BaseViewProps>``;
+}))<BaseViewProps>`
+  height: calc(100% - 1px);
+`;
 
 export interface BaseViewHeadingProps {
   isDraggable?: boolean;
