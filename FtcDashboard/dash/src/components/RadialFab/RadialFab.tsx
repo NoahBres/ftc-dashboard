@@ -44,7 +44,7 @@ const FloatingButton = styled.button.attrs<RadialFabProps>((props) => ({
   transition: 300ms ease;
 `;
 
-const CreateSVGIcon = styled.img`
+const CreateIcon = styled.img`
   width: 1.95em;
   color: white;
 `;
@@ -55,7 +55,7 @@ const RadialFab: FunctionComponent<RadialFabProps> = (
   return (
     <FixedContainer {...props}>
       <FloatingButton {...props} onClick={props.clickEvent}>
-        <CreateSVGIcon src={props.icon} />
+        <CreateIcon src={props.icon} />
       </FloatingButton>
       {React.Children.map(props.children, (e) =>
         React.cloneElement(e as ReactElement, { isOpen: props.isOpen }),

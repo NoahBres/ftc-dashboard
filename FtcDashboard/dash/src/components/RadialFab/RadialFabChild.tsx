@@ -42,7 +42,7 @@ const ButtonContainer = styled.button.attrs<RadialFabChildProps>((props) => ({
   z-index: -1;
 `;
 
-const SVGIcon = styled.div<RadialFabChildProps>`
+const Icon = styled.div<RadialFabChildProps>`
   transition: transform 300ms ease;
 
   transform: ${({ fineAdjustIconX, fineAdjustIconY, isOpen }) =>
@@ -59,12 +59,12 @@ const RadialFabChild: FunctionComponent<RadialFabChildProps> = (
 
   return (
     <ButtonContainer {...props} onClick={props.clickEvent} ref={buttonRef}>
-      <SVGIcon {...props}>{props.children}</SVGIcon>
-      {props.toolTipText !== '' ? (
-        <Tooltip hoverRef={buttonRef} isShowing={isShowingTooltip}>
-          {props.toolTipText ?? ''}
+      <Icon {...props}>{props.children}</Icon>
+      {props.toolTipText !== '' && (
+        <Tooltip isShowing={isShowingTooltip} hoverRef={buttonRef}>
+          {props.toolTipText}
         </Tooltip>
-      ) : null}
+      )}
     </ButtonContainer>
   );
 };

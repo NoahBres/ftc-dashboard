@@ -3,13 +3,13 @@ import styled from 'styled-components';
 
 import { ConfigurableView } from '../enums/ConfigurableView';
 
-import { ReactComponent as CameraSVG } from '../assets/icons/camera.svg';
-import { ReactComponent as SettingsSVG } from '../assets/icons/settings.svg';
-import { ReactComponent as ChartSVG } from '../assets/icons/chart.svg';
-import { ReactComponent as ApiSVG } from '../assets/icons/api.svg';
-import { ReactComponent as SubjectSVG } from '../assets/icons/subject.svg';
-import { ReactComponent as WidgetSVG } from '../assets/icons/widgets.svg';
-import { ReactComponent as LoggingSVG } from '../assets/icons/format_align.svg';
+import { ReactComponent as CameraIcon } from '../assets/icons/camera.svg';
+import { ReactComponent as SettingsIcon } from '../assets/icons/settings.svg';
+import { ReactComponent as ChartIcon } from '../assets/icons/chart.svg';
+import { ReactComponent as ApiIcon } from '../assets/icons/api.svg';
+import { ReactComponent as SubjectIcon } from '../assets/icons/subject.svg';
+import { ReactComponent as WidgetIcon } from '../assets/icons/widgets.svg';
+import { ReactComponent as LoggingIcon } from '../assets/icons/format_align.svg';
 
 type ViewPickerProps = {
   isOpen: boolean;
@@ -28,20 +28,21 @@ const Container = styled.div.attrs({
   right: ${({ right }) => right};
 `;
 
-interface CardButtonProps {
+const CardButton = styled.button.attrs<{
+  isOpen: boolean;
+  customStyles: string;
+}>(({ isOpen, customStyles }) => ({
+  className: `rounded flex justify-start items-center px-4 py-4 bg-white border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transform transition
+    hover:-translate-y-0.5 focus:-translate-y-0.5 focus:border-0 focus:outline-none ring-2 ring-transparent ${
+      isOpen
+        ? 'pointer-events-auto opacity-100 scale-100'
+        : 'pointer-events-none opacity-0 scale-75'
+    } ${customStyles}`,
+}))<{
   isOpen: boolean;
   customStyles: string;
   index: number;
-}
-
-const CardButton = styled.button.attrs<CardButtonProps>((props) => ({
-  className: `rounded bg-white border border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg flex justify-start items-center px-4 py-4 transform transition
-    hover:-translate-y-0.5 focus:-translate-y-0.5 focus:border-0 focus:outline-none ring-2 ring-transparent ${
-      props.isOpen
-        ? 'pointer-events-auto opacity-100 scale-100'
-        : 'pointer-events-none opacity-0 scale-75'
-    } ${props.customStyles}`,
-}))<CardButtonProps>`
+}>`
   transition-delay: ${({ index }) => `${8 * Math.pow(index, 1.5)}ms`};
 `;
 
@@ -49,49 +50,49 @@ const listContent = [
   {
     title: 'OpMode View',
     view: ConfigurableView.OPMODE_VIEW,
-    icon: <WidgetSVG className="w-6 h-6" />,
+    icon: <WidgetIcon className="w-6 h-6" />,
     customStyles: 'focus:ring-red-600',
     iconBg: 'bg-red-500',
   },
   {
     title: 'Field View',
     view: ConfigurableView.FIELD_VIEW,
-    icon: <ApiSVG className="w-7 h-7 transform rotate-45" />,
+    icon: <ApiIcon className="w-7 h-7 transform rotate-45" />,
     customStyles: 'focus:ring-blue-600',
     iconBg: 'bg-blue-500',
   },
   {
     title: 'Graph View',
     view: ConfigurableView.GRAPH_VIEW,
-    icon: <ChartSVG className="text-white w-6 h-6" />,
+    icon: <ChartIcon className="text-white w-6 h-6" />,
     customStyles: 'focus:ring-green-600',
     iconBg: 'bg-green-500',
   },
   {
     title: 'Config View',
     view: ConfigurableView.CONFIG_VIEW,
-    icon: <SettingsSVG className="w-6 h-6" />,
+    icon: <SettingsIcon className="w-6 h-6" />,
     customStyles: 'focus:ring-orange-600',
     iconBg: 'bg-orange-500',
   },
   {
     title: 'Telemetry View',
     view: ConfigurableView.TELEMETRY_VIEW,
-    icon: <SubjectSVG className="w-6 h-6" />,
+    icon: <SubjectIcon className="w-6 h-6" />,
     customStyles: 'focus:ring-yellow-600',
     iconBg: 'bg-yellow-500',
   },
   {
     title: 'Camera View',
     view: ConfigurableView.CAMERA_VIEW,
-    icon: <CameraSVG className="w-5 h-5" />,
+    icon: <CameraIcon className="w-5 h-5" />,
     customStyles: 'focus:ring-purple-600',
     iconBg: 'bg-purple-500',
   },
   {
     title: 'Logging View',
     view: ConfigurableView.LOGGING_VIEW,
-    icon: <LoggingSVG className="w-6 h-6" />,
+    icon: <LoggingIcon className="w-6 h-6" />,
     customStyles: 'focus:ring-pink-600',
     iconBg: 'bg-pink-500',
   },

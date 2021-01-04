@@ -1,28 +1,51 @@
 import styled from 'styled-components';
 
-export interface BaseViewProps {
+type BaseViewProps = {
   isUnlocked?: boolean;
-}
+};
 
 const BaseView = styled.div.attrs<BaseViewProps>((props) => ({
-  className: `h-full pl-4 pt-2 bg-white bg-opacity-75 transition-shadow ${
+  className: `flex flex-col h-full bg-white bg-opacity-75 overflow-hidden transition-shadow ${
     props.isUnlocked ? 'shadow-md rounded-md select-none' : ''
   }`,
 }))<BaseViewProps>``;
 
-export interface BaseViewHeadingProps {
+type BaseViewHeadingProps = {
   isDraggable?: boolean;
-}
+};
 
 const BaseViewHeading = styled.h2.attrs<BaseViewHeadingProps>((props) => ({
-  className: `${
+  className: `text-xl w-full px-4 py-2 font-medium ${
     props.isDraggable ? 'grab-handle' : ''
-  } text-xl w-full py-2 font-medium`,
+  } `,
 }))<BaseViewHeadingProps>``;
 
-const BaseViewBody = styled.div`
-  height: calc(100% - 52px);
+const BaseViewBody = styled.div.attrs<{ className?: string }>((props) => ({
+  className: `px-4 ${props.className}`,
+}))<{ className?: string }>`
+  flex: 1;
   overflow: auto;
 `;
 
-export { BaseView as default, BaseViewHeading, BaseViewBody };
+const BaseViewIcons = styled.div.attrs({
+  className: 'flex items-center mr-3 space-x-1',
+})``;
+
+const BaseViewIcon = styled.div.attrs({
+  className: 'w-8 h-8 flex-center',
+})``;
+
+const BaseViewIconButton = styled.button.attrs({
+  className: 'icon-btn w-8 h-8',
+})``;
+
+export {
+  BaseView as default,
+  BaseViewHeading,
+  BaseViewBody,
+  BaseViewIcons,
+  BaseViewIcon,
+  BaseViewIconButton,
+};
+
+export type { BaseViewProps, BaseViewHeadingProps };

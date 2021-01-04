@@ -8,14 +8,16 @@ import { initOpMode, startOpMode, stopOpMode } from '../actions/opmode';
 import OpModeStatus from '../enums/OpModeStatus';
 import { STOP_OP_MODE_TAG } from './types';
 
-import Icon from '../components/Icon';
-import IconGroup from '../components/IconGroup';
 import BaseView, {
   BaseViewProps,
   BaseViewHeading,
   BaseViewBody,
   BaseViewHeadingProps,
+  BaseViewIcons,
+  BaseViewIcon,
 } from './BaseView';
+
+import { ReactComponent as GamepadIcon } from '../assets/icons/gamepad.svg';
 
 interface OpModeViewState {
   selectedOpMode: string;
@@ -34,12 +36,9 @@ type OpModeViewProps = {
 } & BaseViewProps &
   BaseViewHeadingProps;
 
-interface ActionButtonProps {
-  customStyle: string;
-}
-const ActionButton = styled.button.attrs<ActionButtonProps>((props) => ({
-  className: `ml-3 py-1 px-4 border rounded-md shadow-md ${props.customStyle}`,
-}))<ActionButtonProps>``;
+const ActionButton = styled.button.attrs<{ className?: string }>((props) => ({
+  className: `ml-2 py-1 px-3 border rounded-md shadow-md ${props.className}`,
+}))<{ className?: string }>``;
 
 class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
   constructor(props: OpModeViewProps) {
@@ -96,7 +95,7 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
   renderInitButton() {
     return (
       <ActionButton
-        customStyle="bg-blue-200 border-blue-300"
+        className="bg-blue-200 border-blue-300"
         onClick={() =>
           this.props.dispatch(initOpMode(this.state.selectedOpMode))
         }
@@ -109,7 +108,7 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
   renderStartButton() {
     return (
       <ActionButton
-        customStyle="bg-green-200 border-green-300"
+        className="bg-green-200 border-green-300"
         onClick={() => this.props.dispatch(startOpMode())}
       >
         Start
@@ -120,7 +119,7 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
   renderStopButton() {
     return (
       <ActionButton
-        customStyle="bg-red-200 border-red-300"
+        className="bg-red-200 border-red-300"
         onClick={() => this.props.dispatch(stopOpMode())}
       >
         Stop
@@ -168,8 +167,8 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
           <BaseViewHeading isDraggable={this.props.isDraggable}>
             Op Mode
           </BaseViewHeading>
-          <BaseViewBody>
-            <h3 className="text-lg text-center">
+          <BaseViewBody className="flex-center">
+            <h3 className="text-md text-center">
               Op mode controls have not initialized
             </h3>
           </BaseViewBody>
@@ -179,26 +178,32 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
 
     return (
       <BaseView isUnlocked={this.props.isUnlocked}>
-        <div className="flex-center">
+        <div className="flex">
           <BaseViewHeading isDraggable={this.props.isDraggable}>
             Op Mode
           </BaseViewHeading>
-          <IconGroup>
-            <Icon
-              opacity={gamepad1Connected ? 1.0 : 0.3}
-              icon="gamepad"
-              size="small"
-            />
-            <Icon
-              opacity={gamepad2Connected ? 1.0 : 0.3}
-              icon="gamepad"
-              size="small"
-            />
-          </IconGroup>
+          <BaseViewIcons>
+            <BaseViewIcon>
+              <GamepadIcon
+                className="w-6 h-6"
+                style={{
+                  opacity: gamepad1Connected ? 1.0 : 0.3,
+                }}
+              />
+            </BaseViewIcon>
+            <BaseViewIcon>
+              <GamepadIcon
+                className="w-6 h-6"
+                style={{
+                  opacity: gamepad2Connected ? 1.0 : 0.3,
+                }}
+              />
+            </BaseViewIcon>
+          </BaseViewIcons>
         </div>
         <BaseViewBody>
           <select
-            className="bg-gray-200 rounded py-2 pr-7 px-2 border border-gray-300 shadow-md disabled:shadow-none disabled:text-gray-600 transition"
+            className="bg-gray-200 rounded p-1 pr-6 m-1 mr-2 border border-gray-300 shadow-md disabled:shadow-none disabled:text-gray-600 transition"
             value={this.state.selectedOpMode}
             disabled={
               activeOpMode !== STOP_OP_MODE_TAG || opModeList.length === 0
@@ -215,10 +220,10 @@ class OpModeView extends Component<OpModeViewProps, OpModeViewState> {
           </select>
           {this.renderButtons()}
           {errorMessage !== '' ? (
-            <p className="error mt-5">Error: {errorMessage}</p>
+            <p className="error mt-5 ml-1">Error: {errorMessage}</p>
           ) : null}
           {warningMessage !== '' ? (
-            <p className="warning mt-5">Warning: {warningMessage}</p>
+            <p className="warning mt-5 ml-1">Warning: {warningMessage}</p>
           ) : null}
         </BaseViewBody>
       </BaseView>
