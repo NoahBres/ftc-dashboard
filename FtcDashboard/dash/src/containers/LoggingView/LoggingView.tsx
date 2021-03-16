@@ -10,8 +10,7 @@ import { useSelector } from 'react-redux';
 import { Transition, Switch } from '@headlessui/react';
 
 import { RootState } from '../../store/reducers';
-import { TelemetryItem, STOP_OP_MODE_TAG } from '../../store/types';
-import { OpModeStatus } from '../../enums/OpModeStatus';
+import { TelemetryItem } from '../../store/types';
 
 import BaseView, {
   BaseViewHeading,
@@ -25,6 +24,7 @@ import ToolTip from '../../components/ToolTip';
 
 import useDelayedTooltip from '../../hooks/useDelayedTooltip';
 import useOnClickOutside from '../../hooks/useOnClickOutside';
+import useOpModeLifecycle from '../../hooks/useOpModeLifecycle';
 
 import { ReactComponent as DownloadSVG } from '../../assets/icons/file_download.svg';
 import { ReactComponent as DownloadOffSVG } from '../../assets/icons/file_download_off.svg';
@@ -144,10 +144,6 @@ const LoggingView = ({
   isDraggable = false,
   isUnlocked = false,
 }: LoggingViewProps) => {
-  const { activeOpMode, activeOpModeStatus, opModeList } = useSelector(
-    (state: RootState) => state.status,
-  );
-
   const telemetry = useSelector((state: RootState) => state.telemetry);
 
   const [telemetryStore, dispatchTelemetryStore] = useReducer(
@@ -161,9 +157,7 @@ const LoggingView = ({
   );
 
   const [isRecording, setIsRecording] = useState(false);
-  const [currentOpModeName, setCurrentOpModeName] = useState('');
-
-  const [isDownloadable, setIsDownloadable] = useState(false);
+  const [lastOpModeName, setLastOpModeName] = useState('');
 
   const [isKeyShowingMenuVisible, setIsKeyShowingMenuVisible] = useState(false);
   const [isTimeShowing, setIsTimeShowing] = useState(true);
@@ -174,6 +168,27 @@ const LoggingView = ({
   const keyShowingMenuRef = useRef(null);
   const keyShowingMenuButtonRef = useRef(null);
 
+  const { currentState: opModeState } = useOpModeLifecycle({
+    INIT: {
+      onEnter: () => {
+        setIsRecording(true);
+        clearPastTelemetry();
+      },
+    },
+    RUNNING: {
+      onEnter: ({ newOpModeName }) => {
+        setLastOpModeName(newOpModeName);
+        setIsRecording(true);
+        clearPastTelemetry();
+      },
+    },
+    STOPPED: {
+      onEnter: () => {
+        setIsRecording(false);
+      },
+    },
+  });
+
   useOnClickOutside(
     keyShowingMenuRef,
     () => {
@@ -181,36 +196,6 @@ const LoggingView = ({
     },
     [keyShowingMenuButtonRef],
   );
-
-  useEffect(() => {
-    if (opModeList?.length === 0) {
-      setIsRecording(false);
-    } else if (activeOpMode === STOP_OP_MODE_TAG) {
-      setIsRecording(false);
-    } else if (
-      (activeOpModeStatus === OpModeStatus.RUNNING || telemetry.length > 1) &&
-      !isRecording
-    ) {
-      setIsRecording(true);
-      clearPastTelemetry();
-    } else if (activeOpModeStatus === OpModeStatus.STOPPED) {
-      setIsRecording(false);
-    }
-  }, [activeOpMode, activeOpModeStatus, isRecording, opModeList, telemetry]);
-
-  useEffect(() => {
-    if (activeOpModeStatus === OpModeStatus.RUNNING) {
-      setCurrentOpModeName(activeOpMode ?? '');
-    }
-  }, [activeOpMode, activeOpModeStatus]);
-
-  useEffect(() => {
-    if (!isRecording && telemetryStore.store.length !== 0) {
-      setIsDownloadable(true);
-    } else {
-      setIsDownloadable(false);
-    }
-  }, [isRecording, telemetryStore.store.length]);
 
   useEffect(() => {
     if (telemetry.length === 1 && telemetry[0].timestamp === 0) return;
@@ -229,6 +214,8 @@ const LoggingView = ({
       payload: { store: [], keys: [], raw: [], keysShowing: [] },
     });
   };
+
+  const isDownloadable = !isRecording && telemetryStore.store.length !== 0;
 
   const downloadCSV = () => {
     if (!isDownloadable) return;
@@ -274,25 +261,19 @@ const LoggingView = ({
 
     downloadBlob(
       csv,
-      `${currentOpModeName} ${year}-${month}-${date} ${hourlyDate}.csv`,
+      `${lastOpModeName} ${year}-${month}-${date} ${hourlyDate}.csv`,
       'text/csv',
     );
   };
 
   const getToolTipError = () => {
-    if (
-      telemetryStore.store.length === 0 &&
-      activeOpModeStatus !== OpModeStatus.RUNNING
-    ) {
+    if (telemetryStore.store.length === 0 && opModeState !== 'RUNNING') {
       return 'No logs to download';
-    } else if (
-      activeOpModeStatus === OpModeStatus.RUNNING &&
-      activeOpMode !== STOP_OP_MODE_TAG
-    ) {
+    } else if (opModeState === 'RUNNING') {
       return 'Cannot download logs while OpMode is running';
     }
 
-    return `Download logs for ${currentOpModeName}`;
+    return `Download logs for ${lastOpModeName}`;
   };
 
   return (
