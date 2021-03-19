@@ -4,11 +4,12 @@ import './canvas';
 // all dimensions in this file are *CSS* pixels unless otherwise stated
 export const DEFAULT_OPTIONS = {
   windowMs: 5000,
+  delayMs: 250, // animation delay to allow for data transmission time
   colors: ['#2979ff', '#dd2c00', '#4caf50', '#7c4dff', '#ffa000'],
   lineWidth: 2,
   padding: 15,
-  keySpacing: 4,
-  keyLineLength: 12,
+  legendSpacing: 4,
+  legendLineLength: 12,
   gridLineWidth: 1, // device pixels
   gridLineColor: 'rgb(120, 120, 120)',
   fontSize: 14,
@@ -112,71 +113,115 @@ export default class Graph {
     this.options = cloneDeep(DEFAULT_OPTIONS);
     Object.assign(this.options, options || {});
 
-    this.hasGraphableContent = false;
-
     this.clear();
   }
 
   clear() {
-    this.time = [];
-    this.datasets = [];
-    this.lastSampleTime = 0;
-
-    this.hasGraphableContent = false;
+    this.keys = [];
+    this.keyMetadata = {};
+    this.nextColorIndex = 0;
+    this.samples = [];
   }
 
-  addSample(sample) {
-    if (this.lastSampleTime === 0) {
-      this.lastSimTime = Date.now() + 250;
-      this.time.push(this.lastSimTime);
-      let color = 0;
-      for (let i = 0; i < sample.length; i++) {
-        if (sample[i].name === 'time') {
-          this.lastSampleTime = sample[i].value;
-        } else {
-          this.datasets.push({
-            name: sample[i].name,
-            data: [sample[i].value],
-            color: this.options.colors[color % this.options.colors.length],
-          });
-          color++;
-        }
+  _getCurrentAnimTimestamp() {
+    return Date.now() + this.options.delayMs;
+  }
+
+  _addNewSample({ timestamp, data }) {
+    const animTimestamp = (() => {
+      // map the external timestamp to animation/client timestamp
+      if (this.samples.length > 0) {
+        // if we have a previous sample, simply add the diff
+        const priorSample = this.samples[0];
+        return (
+          priorSample.animTimestamp +
+          (timestamp - priorSample.externalTimestamp)
+        );
+      } else {
+        // otherwise we assign it the current anim timestamp
+        return this._getCurrentAnimTimestamp();
       }
-    } else {
-      for (let i = 0; i < sample.length; i++) {
-        if (sample[i].name === 'time') {
-          this.lastSimTime += sample[i].value - this.lastSampleTime;
-          this.time.push(this.lastSimTime);
-          this.lastSampleTime = sample[i].value;
+    })();
+
+    for (const [key] of data) {
+      if (!this.keys.includes(key)) {
+        this.keys.push(key);
+      }
+
+      if (!Object.prototype.hasOwnProperty.call(this.keyMetadata, key)) {
+        this.keyMetadata[key] = {
+          color: this.options.colors[this.nextColorIndex],
+          count: 1,
+        };
+
+        this.nextColorIndex =
+          (this.nextColorIndex + 1) % this.options.colors.length;
+      } else {
+        this.keyMetadata[key].count++;
+      }
+    }
+
+    this.samples.push({
+      externalTimestamp: timestamp,
+      animTimestamp,
+      data,
+    });
+  }
+
+  _pruneOldSamples() {
+    const now = this._getCurrentAnimTimestamp();
+    let index = 0;
+    while (
+      index < this.samples.length &&
+      this.samples[index].animTimestamp + this.options.windowMs < now
+    ) {
+      index++;
+    }
+
+    for (const sample of this.samples.splice(0, index)) {
+      const { data } = sample;
+
+      for (const [key] of data) {
+        if (this.keyMetadata[key].count === 1) {
+          delete this.keyMetadata[key];
+          this.keys = this.keys.filter((otherKey) => otherKey !== key);
         } else {
-          for (let j = 0; j < this.datasets.length; j++) {
-            if (sample[i].name === this.datasets[j].name) {
-              this.datasets[j].data.push(sample[i].value);
-            }
-          }
+          this.keyMetadata[key].count--;
         }
       }
     }
+  }
+
+  addSamples(samples) {
+    for (const sample of samples) {
+      if (sample.data.length === 0) continue;
+
+      this._addNewSample(sample);
+    }
+
+    this._pruneOldSamples();
   }
 
   getAxis() {
     // get y-axis scaling
     let min = Number.MAX_VALUE;
     let max = Number.MIN_VALUE;
-    for (let i = 0; i < this.datasets.length; i++) {
-      for (let j = 0; j < this.datasets[i].data.length; j++) {
-        const val = this.datasets[i].data[j];
-        if (val > max) {
-          max = val;
+    for (const sample of this.samples) {
+      const { data } = sample;
+      for (const [, value] of data) {
+        if (value > max) {
+          max = value;
         }
-        if (val < min) {
-          min = val;
+        if (value < min) {
+          min = value;
         }
       }
     }
+
     if (Math.abs(min - max) < 1e-6) {
       return getAxisScaling(min - 1, max + 1, this.options.maxTicks);
     }
+
     return getAxisScaling(min, max, this.options.maxTicks);
   }
 
@@ -200,33 +245,37 @@ export default class Graph {
     this.ctx.fillStyle = '#fff';
     this.ctx.fillRect(0, 0, width, height);
 
-    const keyHeight = this.renderKey(0, 0, width);
-    this.renderGraph(0, keyHeight, width, height - keyHeight);
+    const legendHeight = this.renderLegend(0, 0, width);
+    this.renderGraph(0, legendHeight, width, height - legendHeight);
   }
 
-  renderKey(x, y, width) {
+  renderLegend(x, y, width) {
     const o = this.options;
 
     this.ctx.save();
 
-    const numSets = this.datasets.length;
-    const height = numSets * o.fontSize + (numSets - 1) * o.keySpacing;
+    const numSets = this.keys.length;
+    const height = numSets * o.fontSize + (numSets - 1) * o.legendSpacing;
     for (let i = 0; i < numSets; i++) {
-      const lineY = y + i * (o.fontSize + o.keySpacing) + o.fontSize / 2;
-      const name = this.datasets[i].name;
-      const color = this.datasets[i].color;
+      const lineY = y + i * (o.fontSize + o.legendSpacing) + o.fontSize / 2;
+      const key = this.keys[i];
+      const { color } = this.keyMetadata[key];
       const lineWidth =
-        this.ctx.measureText(name).width + o.keyLineLength + o.keySpacing;
+        this.ctx.measureText(key).width + o.legendLineLength + o.legendSpacing;
       const lineX = x + (width - lineWidth) / 2;
 
       this.ctx.strokeStyle = color;
       this.ctx.beginPath();
       this.ctx.fineMoveTo(lineX, lineY);
-      this.ctx.fineLineTo(lineX + o.keyLineLength, lineY);
+      this.ctx.fineLineTo(lineX + o.legendLineLength, lineY);
       this.ctx.stroke();
 
       this.ctx.fillStyle = o.textColor;
-      this.ctx.fillText(name, lineX + o.keyLineLength + o.keySpacing, lineY);
+      this.ctx.fillText(
+        key,
+        lineX + o.legendLineLength + o.legendSpacing,
+        lineY,
+      );
     }
 
     this.ctx.restore();
@@ -236,23 +285,6 @@ export default class Graph {
 
   renderGraph(x, y, width, height) {
     const o = this.options;
-
-    if (this.datasets.length === 0 || this.datasets[0].data.length === 0) {
-      this.hasGraphableContent = false;
-
-      return;
-    }
-
-    this.hasGraphableContent = true;
-
-    // remove old points
-    const now = Date.now();
-    while (now - this.time[0] > o.windowMs + 250) {
-      this.time.shift();
-      for (let i = 0; i < this.datasets.length; i++) {
-        this.datasets[i].data.shift();
-      }
-    }
 
     const graphHeight = height - 2 * o.padding;
 
@@ -341,7 +373,7 @@ export default class Graph {
 
   renderGraphLines(x, y, width, height, axis) {
     const o = this.options;
-    const now = Date.now();
+    const now = this._getCurrentAnimTimestamp();
 
     this.ctx.lineWidth = o.lineWidth;
 
@@ -351,21 +383,31 @@ export default class Graph {
     this.ctx.clip();
 
     // draw data lines
-    // scaling is used instead of transform because of the non-uniform stretching warps the plot line
+    // scaling is used instead of transform because non-uniform stretching warps the plot line
     this.ctx.beginPath();
-    for (let i = 0; i < this.datasets.length; i++) {
-      const d = this.datasets[i];
+    for (const key of this.keys) {
+      const { color } = this.keyMetadata[key];
       this.ctx.beginPath();
-      this.ctx.strokeStyle = d.color;
-      this.ctx.fineMoveTo(
-        scale(this.time[0] - now + o.windowMs, 0, o.windowMs, 0, width),
-        scale(d.data[0], axis.min, axis.max, height, 0),
-      );
-      for (let j = 1; j < d.data.length; j++) {
-        this.ctx.fineLineTo(
-          scale(this.time[j] - now + o.windowMs, 0, o.windowMs, 0, width),
-          scale(d.data[j], axis.min, axis.max, height, 0),
-        );
+      this.ctx.strokeStyle = color;
+      let first = true;
+      for (const sample of this.samples) {
+        const { animTimestamp, data } = sample;
+        for (const [otherKey, value] of data) {
+          if (key !== otherKey) continue;
+
+          if (first) {
+            this.ctx.fineMoveTo(
+              scale(animTimestamp, now - o.windowMs, now, 0, width),
+              scale(value, axis.min, axis.max, height, 0),
+            );
+          } else {
+            this.ctx.fineLineTo(
+              scale(animTimestamp, now - o.windowMs, now, 0, width),
+              scale(value, axis.min, axis.max, height, 0),
+            );
+          }
+          first = false;
+        }
       }
       this.ctx.stroke();
     }

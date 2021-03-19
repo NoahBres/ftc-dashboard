@@ -25,14 +25,12 @@ class GraphCanvas extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    this.props.data
-      .filter((e) => e.length > 1)
-      .forEach((sample) => this.graph.addSample(sample));
-
     if (prevProps.paused !== this.props.paused) {
       if (this.requestId) cancelAnimationFrame(this.requestId);
 
       if (!this.props.paused) this.renderGraph();
+    } else {
+      this.graph.addSamples(this.props.samples);
     }
   }
 
@@ -44,19 +42,19 @@ class GraphCanvas extends React.Component {
   }
 
   render() {
+    const hasGraphableContent = this.graph?.samples.length > 0;
+
     return (
       <div className="h-full flex-center">
         <div
           className={`${
-            this.graph === null || !this.graph?.hasGraphableContent
-              ? 'hidden'
-              : ''
+            this.graph === null || !hasGraphableContent ? 'hidden' : ''
           } w-full h-full`}
         >
           <AutoFitCanvas ref={this.canvasRef} />
         </div>
         <div className="absolute top-0 left-0 w-full h-full flex-center pointer-events-none">
-          {(this.graph === null || !this.graph?.hasGraphableContent) && (
+          {(this.graph === null || !hasGraphableContent) && (
             <p className="text-center">No content to graph</p>
           )}
         </div>
@@ -66,13 +64,11 @@ class GraphCanvas extends React.Component {
 }
 
 GraphCanvas.propTypes = {
-  data: PropTypes.arrayOf(
-    PropTypes.arrayOf(
-      PropTypes.shape({
-        name: PropTypes.string,
-        value: PropTypes.number,
-      }),
-    ),
+  samples: PropTypes.arrayOf(
+    PropTypes.shape({
+      timestamp: PropTypes.number,
+      data: PropTypes.array,
+    }),
   ).isRequired,
   options: PropTypes.object,
   paused: PropTypes.bool,
