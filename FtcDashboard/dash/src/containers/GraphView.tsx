@@ -1,5 +1,5 @@
-import React, { Component } from 'react';
-import { connect, ConnectedProps } from 'react-redux';
+import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import BaseView, {
   BaseViewHeading,
@@ -22,235 +22,166 @@ import { RootState } from '../store/reducers';
 import { validateInt } from '../components/inputs/validation';
 import { DEFAULT_OPTIONS } from './Graph';
 
-type GraphViewState = {
-  graphing: boolean;
-  paused: boolean;
-  keys: string[];
-  windowMs: {
-    value: number;
-    valid: boolean;
-  };
-};
+import useRefCallback from '../hooks/useRefCallback';
 
-const mapStateToProps = (state: RootState) => ({
-  telemetry: state.telemetry,
-});
+type GraphViewProps = BaseViewProps & BaseViewHeadingProps;
 
-const connector = connect(mapStateToProps);
+const GraphView = ({
+  isDraggable = false,
+  isUnlocked = false,
+}: GraphViewProps) => {
+  const telemetry = useSelector((state: RootState) => state.telemetry);
 
-type GraphViewProps = ConnectedProps<typeof connector> &
-  BaseViewProps &
-  BaseViewHeadingProps;
+  const [isGraphing, setIsGraphing] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
-class GraphView extends Component<GraphViewProps, GraphViewState> {
-  containerRef: React.RefObject<HTMLDivElement>;
+  const [keys, setKeys] = useState<string[]>([]);
 
-  constructor(props: GraphViewProps) {
-    super(props);
+  const [windowMs, setWindowMs] = useState({
+    value: DEFAULT_OPTIONS.windowMs,
+    valid: true,
+  });
 
-    this.state = {
-      graphing: false,
-      paused: false,
-      keys: [],
-      windowMs: {
-        value: DEFAULT_OPTIONS.windowMs,
-        valid: true,
-      },
-    };
-
-    this.containerRef = React.createRef();
-
-    this.start = this.start.bind(this);
-    this.stop = this.stop.bind(this);
-
-    this.play = this.play.bind(this);
-    this.pause = this.pause.bind(this);
-
-    this.handleDocumentKeydown = this.handleDocumentKeydown.bind(this);
-  }
-
-  componentDidMount() {
-    if (this.containerRef.current) {
-      this.containerRef.current.addEventListener(
-        'keydown',
-        this.handleDocumentKeydown,
-      );
-    }
-  }
-
-  componentWillUnmount() {
-    if (this.containerRef.current) {
-      this.containerRef.current.removeEventListener(
-        'keydown',
-        this.handleDocumentKeydown,
-      );
-    }
-  }
-
-  handleDocumentKeydown(evt: KeyboardEvent) {
+  const handleDocumentKeydown = (evt: KeyboardEvent) => {
     if (evt.code === 'Space' || evt.key === 'k') {
-      this.setState({
-        ...this.state,
-        paused: !this.state.paused,
-      });
+      setIsPaused(!isPaused);
     }
-  }
+  };
 
-  start() {
-    this.setState({
-      ...this.state,
-      graphing: true,
-      paused: false,
-    });
-  }
+  const [, setContainerRef] = useRefCallback<HTMLDivElement | null>(null, {
+    mountHook: (node) =>
+      node?.addEventListener('keydown', handleDocumentKeydown),
+    cleanupHook: (node) =>
+      node?.removeEventListener('keydown', handleDocumentKeydown),
+  });
 
-  stop() {
-    this.setState({
-      ...this.state,
-      graphing: false,
-    });
-  }
+  const play = () => setIsPaused(false);
+  const pause = () => setIsPaused(true);
 
-  pause() {
-    this.setState({
-      ...this.state,
-      paused: true,
-    });
-  }
+  const start = () => {
+    setIsGraphing(true);
+    setIsPaused(false);
+  };
 
-  play() {
-    this.setState({
-      ...this.state,
-      paused: false,
-    });
-  }
+  const stop = () => setIsGraphing(false);
 
-  render() {
-    const { telemetry } = this.props;
-    const latestPacket = telemetry[telemetry.length - 1];
+  const latestPacket = telemetry[telemetry.length - 1];
 
-    const numericKeys = Object.keys(latestPacket.data).filter(
-      (key) => !isNaN(parseFloat(latestPacket.data[key])),
-    );
-    const showNoNumeric = !this.state.graphing && numericKeys.length === 0;
-    const showEmpty = this.state.graphing && this.state.keys.length === 0;
-    const showText = showNoNumeric || showEmpty;
+  const numericKeys = Object.keys(latestPacket.data).filter(
+    (key) => !isNaN(parseFloat(latestPacket.data[key])),
+  );
+  const showNoNumeric = !isGraphing && numericKeys.length === 0;
+  const showEmpty = isGraphing && keys.length === 0;
+  const showText = showNoNumeric || showEmpty;
 
-    const graphSamples = telemetry.map(({ timestamp, data }) => ({
-      timestamp,
-      data: Object.keys(data)
-        .filter((key) => this.state.keys.includes(key))
-        .map((key) => [key, parseFloat(data[key])]),
-    }));
+  const graphSamples = telemetry.map(({ timestamp, data }) => ({
+    timestamp,
+    data: Object.keys(data)
+      .filter((key) => keys.includes(key))
+      .map((key) => [key, parseFloat(data[key])]),
+  }));
 
-    return (
-      <BaseView
-        className="flex flex-col overflow-auto"
-        isUnlocked={this.props.isUnlocked}
-        ref={this.containerRef}
-        tabIndex={0}
-      >
-        <div className="flex">
-          <BaseViewHeading isDraggable={this.props.isDraggable}>
-            Graph
-          </BaseViewHeading>
-          <BaseViewIcons>
-            {this.state.graphing && this.state.keys.length !== 0 && (
-              <BaseViewIconButton className="w-8 h-8 icon-btn">
-                {this.state.paused ? (
-                  <PlayIcon className="w-6 h-6" onClick={this.play} />
-                ) : (
-                  <PauseIcon className="w-6 h-6" onClick={this.pause} />
-                )}
-              </BaseViewIconButton>
-            )}
-
-            <BaseViewIconButton>
-              {this.state.graphing ? (
-                <CloseIcon className="w-6 h-6 text-black" onClick={this.stop} />
+  return (
+    <BaseView
+      className="flex flex-col overflow-auto"
+      isUnlocked={isUnlocked}
+      ref={setContainerRef}
+      tabIndex={0}
+    >
+      <div className="flex">
+        <BaseViewHeading isDraggable={isDraggable}>Graph</BaseViewHeading>
+        <BaseViewIcons>
+          {isGraphing && keys.length !== 0 && (
+            <BaseViewIconButton className="w-8 h-8 icon-btn">
+              {isPaused ? (
+                <PlayIcon className="w-6 h-6" onClick={play} />
               ) : (
-                <ChartIcon className="w-6 h-6" onClick={this.start} />
+                <PauseIcon className="w-6 h-6" onClick={pause} />
               )}
             </BaseViewIconButton>
-          </BaseViewIcons>
-        </div>
-        <BaseViewBody className={showText ? 'flex-center' : ''}>
-          {!this.state.graphing ? (
-            showNoNumeric ? (
-              <p className="justify-self-center text-center">
-                Send number-valued telemetry data to graph them over time
-              </p>
+          )}
+
+          <BaseViewIconButton>
+            {isGraphing ? (
+              <CloseIcon className="w-6 h-6 text-black" onClick={stop} />
             ) : (
-              <>
-                <p className="my-2 text-center">
-                  Press the upper-right button to graph selected keys over time
-                </p>
-                <h3 className="mt-6 font-medium">Telemetry to graph:</h3>
-                <div className="ml-3">
-                  <MultipleCheckbox
-                    arr={numericKeys}
-                    onChange={(selected: string[]) =>
-                      this.setState({ keys: selected })
-                    }
-                    selected={this.state.keys}
-                  />
-                </div>
-                <div className="mt-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium">Options:</h3>
-                  </div>
-                  <div className="ml-3">
-                    <table>
-                      <tbody>
-                        <tr>
-                          <td>Window (ms)</td>
-                          <td>
-                            <TextInput
-                              value={this.state.windowMs.value}
-                              valid={this.state.windowMs.valid}
-                              validate={validateInt}
-                              onChange={({
-                                value,
-                                valid,
-                              }: {
-                                value: number;
-                                valid: boolean;
-                              }) =>
-                                this.setState({
-                                  windowMs: {
-                                    value,
-                                    valid,
-                                  },
-                                })
-                              }
-                            />
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )
-          ) : showEmpty ? (
+              <ChartIcon className="w-6 h-6" onClick={start} />
+            )}
+          </BaseViewIconButton>
+        </BaseViewIcons>
+      </div>
+      <BaseViewBody className={showText ? 'flex-center' : ''}>
+        {!isGraphing ? (
+          showNoNumeric ? (
             <p className="justify-self-center text-center">
-              No telemetry selected to graph
+              Send number-valued telemetry data to graph them over time
             </p>
           ) : (
-            <GraphCanvas
-              samples={graphSamples}
-              options={{
-                windowMs: this.state.windowMs.valid
-                  ? this.state.windowMs.value
-                  : DEFAULT_OPTIONS.windowMs,
-              }}
-              paused={this.state.paused}
-            />
-          )}
-        </BaseViewBody>
-      </BaseView>
-    );
-  }
-}
+            <>
+              <p className="my-2 text-center">
+                Press the upper-right button to graph selected keys over time
+              </p>
+              <h3 className="mt-6 font-medium">Telemetry to graph:</h3>
+              <div className="ml-3">
+                <MultipleCheckbox
+                  arr={numericKeys}
+                  onChange={(selected: string[]) => setKeys(selected)}
+                  selected={keys}
+                />
+              </div>
+              <div className="mt-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-medium">Options:</h3>
+                </div>
+                <div className="ml-3">
+                  <table>
+                    <tbody>
+                      <tr>
+                        <td>Window (ms)</td>
+                        <td>
+                          <TextInput
+                            value={windowMs.value}
+                            valid={windowMs.valid}
+                            validate={validateInt}
+                            onChange={({
+                              value,
+                              valid,
+                            }: {
+                              value: number;
+                              valid: boolean;
+                            }) =>
+                              setWindowMs({
+                                value,
+                                valid,
+                              })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )
+        ) : showEmpty ? (
+          <p className="justify-self-center text-center">
+            No telemetry selected to graph
+          </p>
+        ) : (
+          <GraphCanvas
+            samples={graphSamples}
+            options={{
+              windowMs: windowMs.valid
+                ? windowMs.value
+                : DEFAULT_OPTIONS.windowMs,
+            }}
+            paused={isPaused}
+          />
+        )}
+      </BaseViewBody>
+    </BaseView>
+  );
+};
 
-export default connector(GraphView);
+export default GraphView;
