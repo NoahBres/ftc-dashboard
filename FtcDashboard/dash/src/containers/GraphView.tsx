@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useReducer, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
 import BaseView, {
@@ -19,10 +19,58 @@ import { ReactComponent as PlayIcon } from '../assets/icons/play_arrow.svg';
 import { ReactComponent as PauseIcon } from '../assets/icons/pause.svg';
 
 import { RootState } from '../store/reducers';
+import { TelemetryItem } from '../store/types';
 import { validateInt } from '../components/inputs/validation';
 import { DEFAULT_OPTIONS } from './Graph';
 
 import useRefCallback from '../hooks/useRefCallback';
+import useOpModeLifecycle from '../hooks/useOpModeLifecycle';
+
+type Key = {
+  name: string;
+  hasNumeric: boolean;
+  isSelected: boolean;
+};
+
+type KeyReducerAction =
+  | { type: 'SET'; payload: Key[] }
+  | { type: 'APPEND'; payload: TelemetryItem }
+  | { type: 'SET_SELECTED'; payload: string[] };
+
+const keyReducer = (state: Key[], action: KeyReducerAction): Key[] => {
+  switch (action.type) {
+    case 'SET': {
+      return action.payload;
+    }
+    case 'APPEND': {
+      const stateCopy = [...state];
+      const { data } = action.payload;
+
+      for (const [key, value] of Object.entries(data)) {
+        const valueIsNumeric = !isNaN(parseFloat(value));
+
+        if (!stateCopy.map((e) => e.name).includes(key)) {
+          stateCopy.push({
+            name: key,
+            hasNumeric: valueIsNumeric,
+            isSelected: false,
+          });
+        } else if (!stateCopy.find((e) => e.name === key)?.hasNumeric) {
+          const currentItem = stateCopy.find((e) => e.name === key);
+          if (currentItem) currentItem.hasNumeric = valueIsNumeric;
+        }
+      }
+
+      return stateCopy;
+    }
+    case 'SET_SELECTED': {
+      return state.map((e) => ({
+        ...e,
+        isSelected: action.payload.includes(e.name),
+      }));
+    }
+  }
+};
 
 type GraphViewProps = BaseViewProps & BaseViewHeadingProps;
 
@@ -35,7 +83,7 @@ const GraphView = ({
   const [isGraphing, setIsGraphing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
-  const [keys, setKeys] = useState<string[]>([]);
+  const [keys, dispatchKeys] = useReducer(keyReducer, []);
 
   const [windowMs, setWindowMs] = useState({
     value: DEFAULT_OPTIONS.windowMs,
@@ -55,6 +103,22 @@ const GraphView = ({
       node?.removeEventListener('keydown', handleDocumentKeydown),
   });
 
+  useEffect(() => {
+    if (telemetry.length === 1 && telemetry[0].timestamp === 0) return;
+
+    telemetry.forEach((e) => {
+      dispatchKeys({ type: 'APPEND', payload: e });
+    });
+  }, [telemetry]);
+
+  useOpModeLifecycle({
+    INIT: {
+      onEnter: () => {
+        dispatchKeys({ type: 'SET', payload: [] });
+      },
+    },
+  });
+
   const play = () => setIsPaused(false);
   const pause = () => setIsPaused(true);
 
@@ -65,19 +129,19 @@ const GraphView = ({
 
   const stop = () => setIsGraphing(false);
 
-  const latestPacket = telemetry[telemetry.length - 1];
-
-  const numericKeys = Object.keys(latestPacket.data).filter(
-    (key) => !isNaN(parseFloat(latestPacket.data[key])),
-  );
-  const showNoNumeric = !isGraphing && numericKeys.length === 0;
+  const showNoNumeric = !isGraphing && !keys.every((e) => e.hasNumeric);
   const showEmpty = isGraphing && keys.length === 0;
   const showText = showNoNumeric || showEmpty;
 
   const graphSamples = telemetry.map(({ timestamp, data }) => ({
     timestamp,
     data: Object.keys(data)
-      .filter((key) => keys.includes(key))
+      .filter((key) =>
+        keys
+          .filter((e) => e.isSelected)
+          .map((e) => e.name)
+          .includes(key),
+      )
       .map((key) => [key, parseFloat(data[key])]),
   }));
 
@@ -124,9 +188,11 @@ const GraphView = ({
               <h3 className="mt-6 font-medium">Telemetry to graph:</h3>
               <div className="ml-3">
                 <MultipleCheckbox
-                  arr={numericKeys}
-                  onChange={(selected: string[]) => setKeys(selected)}
-                  selected={keys}
+                  arr={keys.map((e) => e.name)}
+                  onChange={(selected: string[]) =>
+                    dispatchKeys({ type: 'SET_SELECTED', payload: selected })
+                  }
+                  selected={keys.filter((e) => e.isSelected).map((e) => e.name)}
                 />
               </div>
               <div className="mt-4">
