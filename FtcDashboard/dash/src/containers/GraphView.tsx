@@ -1,4 +1,4 @@
-import React, { useState, useReducer, useEffect } from 'react';
+import React, { useRef, useState, useReducer, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
 import BaseView, {
@@ -90,6 +90,8 @@ const GraphView = ({
     valid: true,
   });
 
+  const lastHighestTimestamp = useRef<number>(-1);
+
   const handleDocumentKeydown = (evt: KeyboardEvent) => {
     if (evt.code === 'Space' || evt.key === 'k') {
       setIsPaused(!isPaused);
@@ -115,6 +117,7 @@ const GraphView = ({
     INIT: {
       onEnter: () => {
         dispatchKeys({ type: 'SET', payload: [] });
+        lastHighestTimestamp.current = -1;
       },
     },
   });
@@ -133,17 +136,21 @@ const GraphView = ({
   const showEmpty = isGraphing && keys.length === 0;
   const showText = showNoNumeric || showEmpty;
 
-  const graphSamples = telemetry.map(({ timestamp, data }) => ({
-    timestamp,
-    data: Object.keys(data)
-      .filter((key) =>
-        keys
-          .filter((e) => e.isSelected)
-          .map((e) => e.name)
-          .includes(key),
-      )
-      .map((key) => [key, parseFloat(data[key])]),
-  }));
+  const graphSamples = telemetry
+    .filter((e) => e.timestamp > lastHighestTimestamp.current)
+    .map(({ timestamp, data }) => ({
+      timestamp,
+      data: Object.keys(data)
+        .filter((key) =>
+          keys
+            .filter((e) => e.isSelected)
+            .map((e) => e.name)
+            .includes(key),
+        )
+        .map((key) => [key, parseFloat(data[key])]),
+    }));
+
+  lastHighestTimestamp.current = Math.max(...telemetry.map((e) => e.timestamp));
 
   return (
     <BaseView
@@ -187,13 +194,17 @@ const GraphView = ({
               </p>
               <h3 className="mt-6 font-medium">Telemetry to graph:</h3>
               <div className="ml-3">
-                <MultipleCheckbox
-                  arr={keys.map((e) => e.name)}
-                  onChange={(selected: string[]) =>
-                    dispatchKeys({ type: 'SET_SELECTED', payload: selected })
-                  }
-                  selected={keys.filter((e) => e.isSelected).map((e) => e.name)}
-                />
+                {keys.length !== 0 && (
+                  <MultipleCheckbox
+                    arr={keys.map((e) => e.name)}
+                    onChange={(selected: string[]) =>
+                      dispatchKeys({ type: 'SET_SELECTED', payload: selected })
+                    }
+                    selected={keys
+                      .filter((e) => e.isSelected)
+                      .map((e) => e.name)}
+                  />
+                )}
               </div>
               <div className="mt-4">
                 <div className="flex justify-between items-center">
