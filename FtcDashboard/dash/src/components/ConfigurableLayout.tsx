@@ -20,6 +20,7 @@ import ViewPicker from './ViewPicker';
 
 import useMouseIdleListener from '../hooks/useMouseIdleListener';
 import useUndoHistory from '../hooks/useUndoHistory';
+import useRefCallback from '../hooks/useRefCallback';
 
 import { ReactComponent as AddIcon } from '../assets/icons/add.svg';
 import { ReactComponent as DeleteSweepIcon } from '../assets/icons/delete_sweep.svg';
@@ -28,6 +29,7 @@ import LockIconURL from '../assets/icons/lock.svg';
 import { ReactComponent as RemoveCircleIcon } from '../assets/icons/remove_circle.svg';
 import { ReactComponent as RemoveCircleOutlineIcon } from '../assets/icons/remove_circle_outline.svg';
 import CreateIconURL from '../assets/icons/create.svg';
+
 import LoggingView from '../containers/LoggingView/LoggingView';
 
 function maxArray(a: number[], b: number[]) {
@@ -278,9 +280,6 @@ const DEFAULT_GRID_TALL: GridItem[] = [
 ];
 
 export default function ConfigurableLayout() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const gridWrapperRef = useRef<HTMLDivElement>(null);
-
   const [isLayoutLocked, setIsLayoutLocked] = useState(true);
   const [isInDeleteMode, setIsInDeleteMode] = useState(false);
   const [isShowingViewPicker, setIsShowingViewPicker] = useState(false);
@@ -303,31 +302,33 @@ export default function ConfigurableLayout() {
     width: '14em',
     height: '13em',
   });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const containerResizerObserver = new ResizeObserver(
-      (entries: ResizeObserverEntry[]) => {
-        if (gridWrapperRef.current) {
-          for (const entry of entries) {
-            if (entry.target === gridWrapperRef.current) {
-              const width =
-                gridWrapperRef.current.clientWidth - 2 * GRID_DOT_PADDING;
-              setGridBgSize(
-                width / ((GRID_COL / 4) * Math.floor(width / 300) + 1) / 3,
-              );
-            }
-          }
+  const [
+    gridWrapperRef,
+    setGridWrapperRef,
+  ] = useRefCallback<HTMLDivElement | null>(null, {
+    mountHook: (node) => {
+      if (node !== null) resizeObserver.current.observe(node);
+    },
+    cleanupHook: () => {
+      resizeObserver.current.disconnect();
+    },
+  });
+
+  const resizeObserver = useRef(
+    new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === gridWrapperRef.current) {
+          const width =
+            gridWrapperRef.current.clientWidth - 2 * GRID_DOT_PADDING;
+          setGridBgSize(
+            width / ((GRID_COL / 4) * Math.floor(width / 300) + 1) / 3,
+          );
         }
-      },
-    );
-
-    if (gridWrapperRef.current !== null)
-      containerResizerObserver.observe(gridWrapperRef.current);
-
-    return () => {
-      containerResizerObserver.disconnect();
-    };
-  }, []);
+      }
+    }),
+  );
 
   useEffect(() => {
     const initialLayoutStorageValue = window.localStorage.getItem(
@@ -521,7 +522,7 @@ export default function ConfigurableLayout() {
           </p>
         </div>
       )}
-      <div ref={gridWrapperRef}>
+      <div ref={setGridWrapperRef}>
         <ReactGridLayout
           className="layout"
           cols={GRID_COL}

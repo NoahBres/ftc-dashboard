@@ -8,6 +8,8 @@ import {
 import AutoSizer from 'react-virtualized-auto-sizer';
 import { DraggableCore } from 'react-draggable';
 
+import useRefCallback from '../../hooks/useRefCallback';
+
 type Props = {
   header: string[];
   data: unknown[];
@@ -47,7 +49,7 @@ const CustomVirtualGrid = ({ header, data, columnsShowing }: Props) => {
 
   const [isScrollAtBottom, setIsScrollAtBottom] = useState(true);
 
-  const gridRef = useRef<Grid>(null);
+  const [gridRef, setGridRef] = useRefCallback<Grid | null>(null);
 
   useEffect(() => {
     setColWidth(new Array(header.length).fill(DEFAULT_COL_WIDTH));
@@ -61,7 +63,7 @@ const CustomVirtualGrid = ({ header, data, columnsShowing }: Props) => {
 
   useEffect(() => {
     gridRef.current?.resetAfterColumnIndex(0);
-  }, [colWidth, columnsShowing]);
+  }, [colWidth, columnsShowing, gridRef]);
 
   useEffect(() => {
     if (gridRef.current) {
@@ -71,7 +73,7 @@ const CustomVirtualGrid = ({ header, data, columnsShowing }: Props) => {
         });
       }
     }
-  }, [data.length, headerOffset, isScrollAtBottom]);
+  }, [data.length, gridRef, headerOffset, isScrollAtBottom]);
 
   const resizeCol = (key: string, deltaX: number) => {
     const index = header.indexOf(key);
@@ -141,7 +143,7 @@ const CustomVirtualGrid = ({ header, data, columnsShowing }: Props) => {
           {({ height, width }) =>
             data.length > 0 ? (
               <Grid
-                ref={gridRef}
+                ref={setGridRef}
                 columnCount={header.length}
                 columnWidth={(i) => derivedColWidth[i]}
                 height={height}

@@ -48,7 +48,7 @@ const GraphView = ({
     }
   };
 
-  const [, setContainerRef] = useRefCallback<HTMLDivElement | null>(null, {
+  const [, containerRef] = useRefCallback<HTMLDivElement | null>(null, {
     mountHook: (node) =>
       node?.addEventListener('keydown', handleDocumentKeydown),
     cleanupHook: (node) =>
@@ -85,7 +85,7 @@ const GraphView = ({
     <BaseView
       className="flex flex-col overflow-auto"
       isUnlocked={isUnlocked}
-      ref={setContainerRef}
+      ref={containerRef}
       tabIndex={0}
     >
       <div className="flex">
