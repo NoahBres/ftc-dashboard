@@ -41,11 +41,15 @@ class GraphCanvas extends React.Component {
     }
   }
 
+  clearGraph() {
+    this.graph.clear();
+  }
+
   render() {
     const hasGraphableContent = this.graph?.samples.length > 0;
 
     return (
-      <div className="h-full flex-center">
+      <div className="h-full flex-center flex-grow">
         <div
           className={`${
             this.graph === null || !hasGraphableContent ? 'hidden' : ''

@@ -15,6 +15,7 @@ import { TelemetryItem } from '../../store/types';
 import BaseView, {
   BaseViewHeading,
   BaseViewBody,
+  BaseViewIconButton,
   BaseViewProps,
   BaseViewHeadingProps,
 } from '../BaseView';
@@ -281,10 +282,8 @@ const LoggingView = ({
       <div className="flex-center">
         <BaseViewHeading isDraggable={isDraggable}>Logging</BaseViewHeading>
         <div className="flex items-center mr-3 space-x-1">
-          <button
-            className={`icon-btn w-8 h-8 ${
-              isDownloadable ? '' : 'border-gray-400'
-            }`}
+          <BaseViewIconButton
+            className={`${isDownloadable ? '' : 'border-gray-400'}`}
             onClick={downloadCSV}
             ref={downloadButtonRef}
           >
@@ -299,17 +298,16 @@ const LoggingView = ({
             >
               {getToolTipError()}
             </ToolTip>
-          </button>
+          </BaseViewIconButton>
           <div className="relative inline-block">
-            <button
+            <BaseViewIconButton
               ref={keyShowingMenuButtonRef}
-              className="icon-btn w-8 h-8"
               onClick={() =>
                 setIsKeyShowingMenuVisible(!isKeyShowingMenuVisible)
               }
             >
               <MoreVertSVG className="w-6 h-6" />
-            </button>
+            </BaseViewIconButton>
             <Transition
               show={isKeyShowingMenuVisible}
               enter="transition ease-out duration-100"
@@ -333,16 +331,16 @@ const LoggingView = ({
                 >
                   Time
                 </MenuItemSwitch>
-                {[...telemetryStore.keys].map((e, i) => (
+                {telemetryStore.keys.map((e, i) => (
                   <MenuItemSwitch
                     key={e}
                     checked={telemetryStore.keysShowing[i]}
-                    onChange={() =>
+                    onChange={(checked) =>
                       dispatchTelemetryStore({
                         type: TelemetryStoreCommand.SET_KEY_SHOWING,
                         payload: {
                           index: i,
-                          value: !telemetryStore.keysShowing[i],
+                          value: checked,
                         },
                       })
                     }
