@@ -1,16 +1,6 @@
-import React, {
-  useState,
-  useEffect,
-  useReducer,
-  useRef,
-  FormEventHandler,
-} from 'react';
-import { useSelector } from 'react-redux';
+import React, { useState, useRef, FormEventHandler } from 'react';
 
 import { Transition, Switch } from '@headlessui/react';
-
-import { RootState } from '../../store/reducers';
-import { TelemetryItem } from '../../store/types';
 
 import BaseView, {
   BaseViewHeading,
@@ -20,94 +10,19 @@ import BaseView, {
   BaseViewHeadingProps,
 } from '../BaseView';
 import CustomVirtualGrid from './CustomVirtualGrid';
-import { DateToHHMMSS } from './DateFormatting';
+import { DateToHHMMSS } from '../../DateFormatting';
 import ToolTip from '../../components/ToolTip';
 
 import useDelayedTooltip from '../../hooks/useDelayedTooltip';
 import useOnClickOutside from '../../hooks/useOnClickOutside';
 import useOpModeLifecycle from '../../hooks/useOpModeLifecycle';
+import useTelemetryStore from '../../hooks/useTelemetryStore';
 
 import { ReactComponent as DownloadSVG } from '../../assets/icons/file_download.svg';
 import { ReactComponent as DownloadOffSVG } from '../../assets/icons/file_download_off.svg';
 import { ReactComponent as MoreVertSVG } from '../../assets/icons/more_vert.svg';
 
 type LoggingViewProps = BaseViewProps & BaseViewHeadingProps;
-
-export type TelemetryStoreItem = {
-  timestamp: number;
-  data: unknown[];
-  log: string[];
-};
-
-enum TelemetryStoreCommand {
-  SET,
-  APPEND,
-  SET_KEY_SHOWING,
-}
-
-type TelemetryStoreState = {
-  store: TelemetryStoreItem[];
-  keys: string[];
-  raw: unknown[];
-  keysShowing: boolean[];
-};
-
-type TelemetryStoreAction =
-  | { type: TelemetryStoreCommand.SET; payload: TelemetryStoreState }
-  | { type: TelemetryStoreCommand.APPEND; payload: TelemetryItem }
-  | {
-      type: TelemetryStoreCommand.SET_KEY_SHOWING;
-      payload: { index: number; value: boolean };
-    };
-
-const telemetryStoreReducer = (
-  state: TelemetryStoreState,
-  action: TelemetryStoreAction,
-): TelemetryStoreState => {
-  switch (action.type) {
-    case TelemetryStoreCommand.SET: {
-      return action.payload;
-    }
-    case TelemetryStoreCommand.APPEND: {
-      const { store, keys, raw, keysShowing } = state;
-      const { timestamp, data, log } = action.payload;
-
-      const newTelemetryStoreItem: TelemetryStoreItem = {
-        timestamp,
-        log,
-        data: new Array(keys.length).fill(null),
-      };
-
-      for (const [key, value] of Object.entries(data)) {
-        if (!keys.includes(key)) {
-          keys.push(key);
-          keysShowing.push(true);
-        }
-
-        newTelemetryStoreItem.data[keys.indexOf(key)] = value;
-      }
-
-      store.push(newTelemetryStoreItem);
-      raw.push([
-        DateToHHMMSS(new Date(timestamp)),
-        ...newTelemetryStoreItem.data,
-      ]);
-
-      return {
-        store,
-        keys,
-        raw,
-        keysShowing,
-      };
-    }
-    case TelemetryStoreCommand.SET_KEY_SHOWING: {
-      const newKeysShowing = [...state.keysShowing];
-      newKeysShowing[action.payload.index] = action.payload.value;
-
-      return { ...state, keysShowing: newKeysShowing };
-    }
-  }
-};
 
 const MenuItemSwitch = ({
   checked,
@@ -145,17 +60,10 @@ const LoggingView = ({
   isDraggable = false,
   isUnlocked = false,
 }: LoggingViewProps) => {
-  const telemetry = useSelector((state: RootState) => state.telemetry);
-
-  const [telemetryStore, dispatchTelemetryStore] = useReducer(
-    telemetryStoreReducer,
-    {
-      store: [],
-      keys: [],
-      raw: [],
-      keysShowing: [],
-    },
-  );
+  const {
+    store: telemetryStore,
+    dispatch: dispatchTelemetryStore,
+  } = useTelemetryStore<boolean>(true);
 
   const [isRecording, setIsRecording] = useState(false);
   const [lastOpModeName, setLastOpModeName] = useState('');
@@ -173,14 +81,12 @@ const LoggingView = ({
     INIT: {
       onEnter: () => {
         setIsRecording(true);
-        clearPastTelemetry();
       },
     },
     RUNNING: {
       onEnter: ({ newOpModeName }) => {
         setLastOpModeName(newOpModeName);
         setIsRecording(true);
-        clearPastTelemetry();
       },
     },
     STOPPED: {
@@ -197,24 +103,6 @@ const LoggingView = ({
     },
     [keyShowingMenuButtonRef],
   );
-
-  useEffect(() => {
-    if (telemetry.length === 1 && telemetry[0].timestamp === 0) return;
-
-    telemetry.forEach((e) => {
-      dispatchTelemetryStore({
-        type: TelemetryStoreCommand.APPEND,
-        payload: e,
-      });
-    });
-  }, [telemetry]);
-
-  const clearPastTelemetry = () => {
-    dispatchTelemetryStore({
-      type: TelemetryStoreCommand.SET,
-      payload: { store: [], keys: [], raw: [], keysShowing: [] },
-    });
-  };
 
   const isDownloadable = !isRecording && telemetryStore.store.length !== 0;
 
@@ -334,10 +222,10 @@ const LoggingView = ({
                 {telemetryStore.keys.map((e, i) => (
                   <MenuItemSwitch
                     key={e}
-                    checked={telemetryStore.keysShowing[i]}
+                    checked={telemetryStore.keyMeta[i]}
                     onChange={(checked) =>
                       dispatchTelemetryStore({
-                        type: TelemetryStoreCommand.SET_KEY_SHOWING,
+                        type: 'SET_KEY_META',
                         payload: {
                           index: i,
                           value: checked,
@@ -361,7 +249,7 @@ const LoggingView = ({
               : []
           }
           data={telemetryStore.raw}
-          columnsShowing={[isTimeShowing, ...telemetryStore.keysShowing]}
+          columnsShowing={[isTimeShowing, ...telemetryStore.keyMeta]}
         />
       </BaseViewBody>
     </BaseView>
