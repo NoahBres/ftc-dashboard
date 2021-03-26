@@ -45,7 +45,7 @@ class TextInput extends React.Component {
           !this.props.valid
             ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
             : ''
-        }`}
+        } ${this.props.className}`}
         ref={this.inputRef}
         type="text"
         size={15}
@@ -63,6 +63,7 @@ TextInput.propTypes = {
   validate: PropTypes.func.isRequired,
   onChange: PropTypes.func.isRequired,
   onSave: PropTypes.func,
+  className: PropTypes.string,
 };
 
 export default TextInput;
