@@ -1,5 +1,5 @@
 import { cloneDeep } from 'lodash';
-import './canvas';
+import { fineLineTo, fineMoveTo } from './canvas';
 import fieldImageName from '../assets/field.png';
 
 // this is a bit of a hack bit it'll have to do
@@ -86,16 +86,16 @@ export default class Field {
     for (let i = 0; i < numTicksX; i++) {
       const lineX = x + horSpacing * i;
       this.ctx.beginPath();
-      this.ctx.fineMoveTo(lineX, y);
-      this.ctx.fineLineTo(lineX, y + height);
+      fineMoveTo(this.ctx, lineX, y);
+      fineLineTo(this.ctx, lineX, y + height);
       this.ctx.stroke();
     }
 
     for (let i = 0; i < numTicksY; i++) {
       const lineY = y + vertSpacing * i;
       this.ctx.beginPath();
-      this.ctx.fineMoveTo(x, lineY);
-      this.ctx.fineLineTo(x + width, lineY);
+      fineMoveTo(this.ctx, x, lineY);
+      fineLineTo(this.ctx, x + width, lineY);
       this.ctx.stroke();
     }
 
@@ -136,9 +136,9 @@ export default class Field {
         case 'polygon': {
           this.ctx.beginPath();
           const { xPoints, yPoints, stroke } = op;
-          this.ctx.fineMoveTo(xPoints[0], yPoints[0]);
+          fineMoveTo(this.ctx, xPoints[0], yPoints[0]);
           for (let i = 1; i < xPoints.length; i++) {
-            this.ctx.fineLineTo(xPoints[i], yPoints[i]);
+            fineLineTo(this.ctx, xPoints[i], yPoints[i]);
           }
           this.ctx.closePath();
 
@@ -152,9 +152,9 @@ export default class Field {
         case 'polyline': {
           this.ctx.beginPath();
           const { xPoints, yPoints } = op;
-          this.ctx.fineMoveTo(xPoints[0], yPoints[0]);
+          fineMoveTo(this.ctx, xPoints[0], yPoints[0]);
           for (let i = 1; i < xPoints.length; i++) {
-            this.ctx.fineLineTo(xPoints[i], yPoints[i]);
+            fineLineTo(this.ctx, xPoints[i], yPoints[i]);
           }
           this.ctx.stroke();
           break;
@@ -162,7 +162,7 @@ export default class Field {
         case 'spline': {
           this.ctx.beginPath();
           const { ax, bx, cx, dx, ex, fx, ay, by, cy, dy, ey, fy } = op;
-          this.ctx.fineMoveTo(fx, fy);
+          fineMoveTo(this.ctx, fx, fy);
           for (let i = 0; i <= o.splineSamples; i++) {
             const t = i / o.splineSamples;
             const sx =

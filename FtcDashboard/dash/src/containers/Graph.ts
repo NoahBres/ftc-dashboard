@@ -1,10 +1,36 @@
 import { cloneDeep } from 'lodash';
-import './canvas';
+import { fineLineTo, fineMoveTo } from './canvas';
+
+type GraphOptions = {
+  windowMs: number;
+  delayMs: number; // animation delay to allow for data transmission time
+
+  colors: string[];
+  lineWidth: number;
+
+  padding: number;
+  legendSpacing: 4;
+  legendLineLength: 12;
+
+  gridLineWidth: number; // device pixels
+  gridLineColor: string;
+  fontSize: number;
+  textColor: string;
+  maxTicks: number;
+};
+
+type Axis = {
+  min: number;
+  max: number;
+  spacing: number;
+};
+
+type Sample = { data: [string, number][]; timestamp: number };
 
 // all dimensions in this file are *CSS* pixels unless otherwise stated
-export const DEFAULT_OPTIONS = {
+export const DEFAULT_OPTIONS: GraphOptions = {
   windowMs: 5000,
-  delayMs: 250, // animation delay to allow for data transmission time
+  delayMs: 250,
   colors: ['#2979ff', '#dd2c00', '#4caf50', '#7c4dff', '#ffa000'],
   lineWidth: 2,
   padding: 15,
@@ -17,7 +43,7 @@ export const DEFAULT_OPTIONS = {
   maxTicks: 7,
 };
 
-function niceNum(range, round) {
+function niceNum(range: number, round: boolean) {
   const exponent = Math.floor(Math.log10(range));
   const fraction = range / Math.pow(10, exponent);
   let niceFraction;
@@ -44,7 +70,7 @@ function niceNum(range, round) {
 }
 
 // interesting algorithm (see http://erison.blogspot.nl/2011/07/algorithm-for-optimal-scaling-on-chart.html)
-function getAxisScaling(min, max, maxTicks) {
+function getAxisScaling(min: number, max: number, maxTicks: number) {
   const range = niceNum(max - min, false);
   const tickSpacing = niceNum(range / (maxTicks - 1), true);
   const niceMin = Math.floor(min / tickSpacing) * tickSpacing;
@@ -57,7 +83,7 @@ function getAxisScaling(min, max, maxTicks) {
 }
 
 // shamelessly stolen from https://github.com/chartjs/Chart.js/blob/master/src/core/core.ticks.js
-function formatTicks(tickValue, ticks) {
+function formatTicks(tickValue: number, ticks: number[]) {
   // If we have lots of ticks, don't use the ones
   let delta = ticks.length > 3 ? ticks[2] - ticks[1] : ticks[1] - ticks[0];
 
@@ -83,15 +109,15 @@ function formatTicks(tickValue, ticks) {
   return tickString;
 }
 
-function getTicks(axis) {
+function getTicks(axis: Axis) {
   // get tick array
-  const ticks = [];
+  const ticks: number[] = [];
   for (let i = axis.min; i <= axis.max; i += axis.spacing) {
     ticks.push(i);
   }
 
   // generate strings
-  const tickStrings = [];
+  const tickStrings: string[] = [];
   for (let i = 0; i < ticks.length; i++) {
     const s = formatTicks(ticks[i], ticks);
     tickStrings.push(s);
@@ -100,13 +126,34 @@ function getTicks(axis) {
   return tickStrings;
 }
 
-function scale(value, fromLow, fromHigh, toLow, toHigh) {
+function scale(
+  value: number,
+  fromLow: number,
+  fromHigh: number,
+  toLow: number,
+  toHigh: number,
+) {
   const frac = (toHigh - toLow) / (fromHigh - fromLow);
   return toLow + frac * (value - fromLow);
 }
 
 export default class Graph {
-  constructor(canvas, options) {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D | null;
+  options: GraphOptions;
+
+  keys: string[] = [];
+  keyMetadata: { [id: string]: { color: string; count: number } } = {};
+
+  nextColorIndex = 0;
+
+  samples: {
+    externalTimestamp: number;
+    animTimestamp: number;
+    data: Sample['data'];
+  }[] = [];
+
+  constructor(canvas: HTMLCanvasElement, options: GraphOptions) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
@@ -127,7 +174,7 @@ export default class Graph {
     return Date.now() + this.options.delayMs;
   }
 
-  _addNewSample({ timestamp, data }) {
+  _addNewSample({ timestamp, data }: Sample) {
     const animTimestamp = (() => {
       // map the external timestamp to animation/client timestamp
       if (this.samples.length > 0) {
@@ -169,6 +216,8 @@ export default class Graph {
   }
 
   _pruneOldSamples() {
+    console.log('pruning');
+
     const now = this._getCurrentAnimTimestamp();
     let index = 0;
     while (
@@ -192,7 +241,7 @@ export default class Graph {
     }
   }
 
-  addSamples(samples) {
+  addSamples(samples: Sample[]) {
     for (const sample of samples) {
       if (sample.data.length === 0) continue;
 
@@ -226,6 +275,8 @@ export default class Graph {
   }
 
   render() {
+    if (!this.ctx) return;
+
     const o = this.options;
 
     // eslint-disable-next-line
@@ -245,11 +296,13 @@ export default class Graph {
     this.ctx.fillStyle = '#fff';
     this.ctx.fillRect(0, 0, width, height);
 
-    const legendHeight = this.renderLegend(0, 0, width);
+    const legendHeight = this.renderLegend(0, 0, width) ?? 0;
     this.renderGraph(0, legendHeight, width, height - legendHeight);
   }
 
-  renderLegend(x, y, width) {
+  renderLegend(x: number, y: number, width: number) {
+    if (!this.ctx) return;
+
     const o = this.options;
 
     this.ctx.save();
@@ -266,8 +319,8 @@ export default class Graph {
 
       this.ctx.strokeStyle = color;
       this.ctx.beginPath();
-      this.ctx.fineMoveTo(lineX, lineY);
-      this.ctx.fineLineTo(lineX + o.legendLineLength, lineY);
+      fineMoveTo(this.ctx, lineX, lineY);
+      fineLineTo(this.ctx, lineX + o.legendLineLength, lineY);
       this.ctx.stroke();
 
       this.ctx.fillStyle = o.textColor;
@@ -283,19 +336,16 @@ export default class Graph {
     return height;
   }
 
-  renderGraph(x, y, width, height) {
+  renderGraph(x: number, y: number, width: number, height: number) {
     const o = this.options;
 
     const graphHeight = height - 2 * o.padding;
 
     const axis = this.getAxis();
     const ticks = getTicks(axis);
-    const axisWidth = this.renderAxisLabels(
-      x + o.padding,
-      y + o.padding,
-      graphHeight,
-      ticks,
-    );
+    const axisWidth =
+      this.renderAxisLabels(x + o.padding, y + o.padding, graphHeight, ticks) ??
+      0;
 
     const graphWidth = width - axisWidth - 3 * o.padding;
 
@@ -317,7 +367,9 @@ export default class Graph {
     );
   }
 
-  renderAxisLabels(x, y, height, ticks) {
+  renderAxisLabels(x: number, y: number, height: number, ticks: string[]) {
+    if (!this.ctx) return;
+
     this.ctx.save();
 
     let width = 0;
@@ -335,7 +387,11 @@ export default class Graph {
     const vertSpacing = height / (ticks.length - 1);
     x += width;
     for (let i = 0; i < ticks.length; i++) {
-      this.ctx.fillText(ticks[i], x, y + (ticks.length - i - 1) * vertSpacing);
+      this.ctx.fillText(
+        ticks[i].toString(),
+        x,
+        y + (ticks.length - i - 1) * vertSpacing,
+      );
     }
 
     this.ctx.restore();
@@ -343,7 +399,16 @@ export default class Graph {
     return width;
   }
 
-  renderGridLines(x, y, width, height, numTicksX, numTicksY) {
+  renderGridLines(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    numTicksX: number,
+    numTicksY: number,
+  ) {
+    if (!this.ctx) return;
+
     this.ctx.save();
 
     this.ctx.strokeStyle = this.options.gridLineColor;
@@ -355,23 +420,31 @@ export default class Graph {
     for (let i = 0; i < numTicksX; i++) {
       const lineX = x + horSpacing * i;
       this.ctx.beginPath();
-      this.ctx.fineMoveTo(lineX, y);
-      this.ctx.fineLineTo(lineX, y + height);
+      fineMoveTo(this.ctx, lineX, y);
+      fineLineTo(this.ctx, lineX, y + height);
       this.ctx.stroke();
     }
 
     for (let i = 0; i < numTicksY; i++) {
       const lineY = y + vertSpacing * i;
       this.ctx.beginPath();
-      this.ctx.fineMoveTo(x, lineY);
-      this.ctx.fineLineTo(x + width, lineY);
+      fineMoveTo(this.ctx, x, lineY);
+      fineLineTo(this.ctx, x + width, lineY);
       this.ctx.stroke();
     }
 
     this.ctx.restore();
   }
 
-  renderGraphLines(x, y, width, height, axis) {
+  renderGraphLines(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    axis: Axis,
+  ) {
+    if (!this.ctx) return;
+
     const o = this.options;
     const now = this._getCurrentAnimTimestamp();
 
@@ -396,12 +469,14 @@ export default class Graph {
           if (key !== otherKey) continue;
 
           if (first) {
-            this.ctx.fineMoveTo(
+            fineMoveTo(
+              this.ctx,
               scale(animTimestamp, now - o.windowMs, now, 0, width),
               scale(value, axis.min, axis.max, height, 0),
             );
           } else {
-            this.ctx.fineLineTo(
+            fineLineTo(
+              this.ctx,
               scale(animTimestamp, now - o.windowMs, now, 0, width),
               scale(value, axis.min, axis.max, height, 0),
             );
