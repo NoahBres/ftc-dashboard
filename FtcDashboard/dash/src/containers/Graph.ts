@@ -216,8 +216,6 @@ export default class Graph {
   }
 
   _pruneOldSamples() {
-    console.log('pruning');
-
     const now = this._getCurrentAnimTimestamp();
     let index = 0;
     while (

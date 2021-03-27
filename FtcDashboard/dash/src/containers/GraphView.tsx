@@ -1,10 +1,4 @@
-import React, {
-  useRef,
-  useState,
-  useReducer,
-  useEffect,
-  FormEventHandler,
-} from 'react';
+import React, { useRef, useState, useEffect, FormEventHandler } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Transition, Switch } from '@headlessui/react';
@@ -25,61 +19,15 @@ import { ReactComponent as PauseIcon } from '../assets/icons/pause.svg';
 import { ReactComponent as MoreVertSVG } from '../assets/icons/more_vert.svg';
 
 import { RootState } from '../store/reducers';
-import { TelemetryItem } from '../store/types';
 import { validateInt } from '../components/inputs/validation';
 import { DEFAULT_OPTIONS } from './Graph';
 
-import useRefCallback from '../hooks/useRefCallback';
 import useOpModeLifecycle from '../hooks/useOpModeLifecycle';
+import useTelemetryStore from '../hooks/useTelemetryStore';
+import useRefCallback from '../hooks/useRefCallback';
 import useOnClickOutside from '../hooks/useOnClickOutside';
 
 type GraphViewProps = BaseViewProps & BaseViewHeadingProps;
-
-type Key = {
-  name: string;
-  hasNumeric: boolean;
-  isSelected: boolean;
-};
-
-type KeyReducerAction =
-  | { type: 'SET'; payload: Key[] }
-  | { type: 'APPEND'; payload: TelemetryItem }
-  | { type: 'SET_SELECTED'; payload: { index: number; value: boolean } };
-
-const keyReducer = (state: Key[], action: KeyReducerAction): Key[] => {
-  switch (action.type) {
-    case 'SET': {
-      return action.payload;
-    }
-    case 'APPEND': {
-      const stateCopy = [...state];
-      const { data } = action.payload;
-
-      for (const [key, value] of Object.entries(data)) {
-        const valueIsNumeric = !isNaN(parseFloat(value));
-
-        if (!stateCopy.map((e) => e.name).includes(key)) {
-          stateCopy.push({
-            name: key,
-            hasNumeric: valueIsNumeric,
-            isSelected: false,
-          });
-        } else if (!stateCopy.find((e) => e.name === key)?.hasNumeric) {
-          const currentItem = stateCopy.find((e) => e.name === key);
-          if (currentItem) currentItem.hasNumeric = valueIsNumeric;
-        }
-      }
-
-      return stateCopy;
-    }
-    case 'SET_SELECTED': {
-      const stateCopy = [...state];
-      stateCopy[action.payload.index].isSelected = action.payload.value;
-
-      return stateCopy;
-    }
-  }
-};
 
 const MenuItemSwitch = ({
   checked,
@@ -118,6 +66,11 @@ const GraphView = ({
   isUnlocked = false,
 }: GraphViewProps) => {
   const telemetry = useSelector((state: RootState) => state.telemetry);
+  const { store, dispatch } = useTelemetryStore<{
+    isSelected: boolean;
+    hasNumeric: boolean;
+  }>({ isSelected: false, hasNumeric: false });
+  const { keys, keyMeta } = store;
 
   const graphRef = useRef<GraphCanvas>(null);
 
@@ -126,8 +79,6 @@ const GraphView = ({
   const [isMenuShowing, setIsMenuShowing] = useState(false);
 
   const [isPaused, setIsPaused] = useState(false);
-
-  const [keys, dispatchKeys] = useReducer(keyReducer, []);
 
   const [windowMs, setWindowMs] = useState({
     value: DEFAULT_OPTIONS.windowMs,
@@ -149,20 +100,13 @@ const GraphView = ({
       node?.removeEventListener('keydown', handleDocumentKeydown),
   });
 
-  useEffect(() => {
-    if (telemetry.length === 1 && telemetry[0].timestamp === 0) return;
-
-    telemetry.forEach((e) => {
-      dispatchKeys({ type: 'APPEND', payload: e });
-    });
-  }, [telemetry]);
-
   // TODO: Use currentState to cache selected values if opmode hasn't changed
   const { currentState } = useOpModeLifecycle({
     INIT: {
       onEnter: () => {
-        dispatchKeys({ type: 'SET', payload: [] });
         lastHighestTimestamp.current = -1;
+
+        setIsPaused(false);
       },
     },
   });
@@ -175,8 +119,27 @@ const GraphView = ({
     [menuBtnRef],
   );
 
-  const play = () => setIsPaused(false);
-  const pause = () => setIsPaused(true);
+  useEffect(() => {
+    telemetry.forEach((e) => {
+      Object.entries(e.data).forEach(([key, value]) => {
+        const index = keys.indexOf(key);
+
+        if (index !== -1) {
+          const metaVal = keyMeta[index];
+
+          if (!metaVal.hasNumeric && !isNaN(parseFloat(value))) {
+            dispatch({
+              type: 'SET_KEY_META',
+              payload: {
+                index,
+                value: { ...metaVal, hasNumeric: true },
+              },
+            });
+          }
+        }
+      });
+    });
+  }, [dispatch, keyMeta, keys, telemetry]);
 
   const graphSamples = telemetry
     .filter((e) => e.timestamp > lastHighestTimestamp.current)
@@ -184,10 +147,7 @@ const GraphView = ({
       timestamp,
       data: Object.keys(data)
         .filter((key) =>
-          keys
-            .filter((e) => e.isSelected)
-            .map((e) => e.name)
-            .includes(key),
+          keys.filter((_, i) => keyMeta[i].isSelected).includes(key),
         )
         .map((key) => [key, parseFloat(data[key])]),
     }));
@@ -195,13 +155,13 @@ const GraphView = ({
   lastHighestTimestamp.current = Math.max(...telemetry.map((e) => e.timestamp));
 
   const errorFlow = () => {
-    if (keys.length === 0 || !keys.every((e) => e.hasNumeric)) {
+    if (keys.length === 0 || !keys.every((_, i) => keyMeta[i].hasNumeric)) {
       return (
         <p className="justify-self-center text-center">
           Send number-valued telemetry data to graph them over time
         </p>
       );
-    } else if (keys.every((e) => !e.isSelected)) {
+    } else if (keys.every((_, i) => !keyMeta[i].isSelected)) {
       return (
         <div className="justify-self-center text-center">
           <p>Select telemetry to graph</p>
@@ -235,7 +195,9 @@ const GraphView = ({
         <BaseViewHeading isDraggable={isDraggable}>Graph</BaseViewHeading>
         <BaseViewIcons>
           <Transition
-            show={keys.length !== 0 && keys.some((e) => e.isSelected)}
+            show={
+              keys.length !== 0 && keys.some((_, i) => keyMeta[i].isSelected)
+            }
             enter="transition-opacity duration-100"
             enterFrom="opacity-0"
             enterTo="opacity-100"
@@ -245,9 +207,15 @@ const GraphView = ({
           >
             <BaseViewIconButton>
               {isPaused ? (
-                <PlayIcon className="w-6 h-6" onClick={play} />
+                <PlayIcon
+                  className="w-6 h-6"
+                  onClick={() => setIsPaused(false)}
+                />
               ) : (
-                <PauseIcon className="w-6 h-6" onClick={pause} />
+                <PauseIcon
+                  className="w-6 h-6"
+                  onClick={() => setIsPaused(true)}
+                />
               )}
             </BaseViewIconButton>
           </Transition>
@@ -277,19 +245,22 @@ const GraphView = ({
                 </p>
                 <div className="mb-3 mt-2 mx-3">
                   {keys
-                    .filter((e) => e.hasNumeric)
+                    .filter((_, i) => keyMeta[i].hasNumeric)
                     .map((e, i) => (
                       <MenuItemSwitch
-                        key={e.name}
-                        checked={e.isSelected}
+                        key={e}
+                        checked={keyMeta[i].isSelected}
                         onChange={(checked) =>
-                          dispatchKeys({
-                            type: 'SET_SELECTED',
-                            payload: { index: i, value: checked },
+                          dispatch({
+                            type: 'SET_KEY_META',
+                            payload: {
+                              index: i,
+                              value: { ...keyMeta[i], isSelected: checked },
+                            },
                           })
                         }
                       >
-                        {e.name}
+                        {e}
                       </MenuItemSwitch>
                     ))}
                 </div>
