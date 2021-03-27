@@ -254,6 +254,47 @@ export default class Graph {
     this._pruneOldSamples();
   }
 
+  backPopulateSamples(samples: Sample[]) {
+    if (samples.length === 0) return;
+
+    samples.sort((a, b) => b.timestamp - a.timestamp);
+
+    const latestExternalTimestamp = samples[0].timestamp;
+    const latestAnimTimestamp =
+      this._getCurrentAnimTimestamp() + this.options.delayMs;
+
+    samples.forEach((sample) => {
+      if (sample.data.length !== 0) {
+        const { timestamp, data } = sample;
+
+        for (const [key] of data) {
+          if (!this.keys.includes(key)) {
+            this.keys.push(key);
+          }
+
+          if (!Object.prototype.hasOwnProperty.call(this.keyMetadata, key)) {
+            this.keyMetadata[key] = {
+              color: this.options.colors[this.nextColorIndex],
+              count: 1,
+            };
+
+            this.nextColorIndex =
+              (this.nextColorIndex + 1) % this.options.colors.length;
+          } else {
+            this.keyMetadata[key].count++;
+          }
+        }
+
+        this.samples.unshift({
+          externalTimestamp: timestamp,
+          animTimestamp:
+            latestAnimTimestamp - (latestExternalTimestamp - timestamp),
+          data,
+        });
+      }
+    });
+  }
+
   setFrozen(val: boolean) {
     this.frozen = val;
 
@@ -261,20 +302,14 @@ export default class Graph {
   }
 
   getAxis() {
+    const values = this.samples.reduce<number[]>(
+      (acc, curr) => [...acc, ...curr.data.map((e) => e[1])],
+      [],
+    );
+
     // get y-axis scaling
-    let min = Number.MAX_VALUE;
-    let max = Number.MIN_VALUE;
-    for (const sample of this.samples) {
-      const { data } = sample;
-      for (const [, value] of data) {
-        if (value > max) {
-          max = value;
-        }
-        if (value < min) {
-          min = value;
-        }
-      }
-    }
+    const min = Math.min(...values);
+    const max = Math.max(...values);
 
     if (Math.abs(min - max) < 1e-6) {
       return getAxisScaling(min - 1, max + 1, this.options.maxTicks);

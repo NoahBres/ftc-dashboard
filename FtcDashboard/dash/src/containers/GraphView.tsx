@@ -25,11 +25,10 @@ import { ReactComponent as PlayIcon } from '../assets/icons/play_arrow.svg';
 import { ReactComponent as PauseIcon } from '../assets/icons/pause.svg';
 import { ReactComponent as MoreVertSVG } from '../assets/icons/more_vert.svg';
 
-import Graph from './Graph';
+import Graph, { Sample } from './Graph';
 import { RootState } from '../store/reducers';
 import { validateInt } from '../components/inputs/validation';
 import { DEFAULT_OPTIONS } from './Graph';
-import { Sample } from './Graph';
 
 import useOpModeLifecycle from '../hooks/useOpModeLifecycle';
 import useTelemetryStore from '../hooks/useTelemetryStore';
@@ -181,14 +180,51 @@ const GraphView = ({
     sampleQueue.current.push(graphSamples);
   }, [keyMeta, keys, telemetry]);
 
-  // useEffect(() => {
-  //   if (canvasRef.current) {
-  //     graphRef.current = new Graph(canvasRef.current, {
-  //       windowMs: windowMs.valid ? windowMs.value : DEFAULT_OPTIONS.windowMs,
-  //     });
-  //     console.log('reconstruct graph');
-  //   }
-  // }, [windowMs]);
+  const backPopulateGraph = () => {
+    if (store.store.length > 0 && windowMs.valid) {
+      const newSamples: Sample[] = [];
+      const maxTimestamp = store.store[store.store.length - 1].timestamp;
+
+      sampleQueue.current = [];
+      graphRef.current?.clear();
+
+      let curr = store.store.length;
+      let exit = false;
+
+      while (--curr >= 0 && !exit) {
+        const currItem = store.store[curr];
+
+        if (maxTimestamp - currItem.timestamp <= windowMs.value) {
+          newSamples.push({
+            timestamp: currItem.timestamp,
+            data: currItem.data
+              .map((e, i) => [keys[i], e] as [string, number])
+              .filter((_, i) => keyMeta[i].isSelected),
+          });
+        } else {
+          exit = true;
+        }
+      }
+
+      sampleQueue.current = [];
+      graphRef.current?.backPopulateSamples(newSamples);
+    }
+  };
+
+  useEffect(() => {
+    backPopulateGraph();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyMeta]);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      graphRef.current = new Graph(canvasRef.current, {
+        windowMs: windowMs.valid ? windowMs.value : DEFAULT_OPTIONS.windowMs,
+      });
+      backPopulateGraph();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowMs]);
 
   const animationFrame = useCallback(() => {
     sampleQueue.current.forEach((e) => graphRef.current?.addSamples(e));
@@ -345,7 +381,7 @@ const GraphView = ({
           </div>
         </BaseViewIcons>
       </div>
-      <BaseViewBody className="flex-center">{errorFlow()}</BaseViewBody>
+      <BaseViewBody className="flex-center mb-1">{errorFlow()}</BaseViewBody>
     </BaseView>
   );
 };
