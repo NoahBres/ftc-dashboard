@@ -1,5 +1,12 @@
-import React, { useRef, useState, useEffect, FormEventHandler } from 'react';
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  FormEventHandler,
+} from 'react';
 import { useSelector } from 'react-redux';
+import { useCallbackRef } from 'use-callback-ref';
 
 import { Transition, Switch } from '@headlessui/react';
 
@@ -11,20 +18,21 @@ import BaseView, {
   BaseViewProps,
   BaseViewHeadingProps,
 } from './BaseView';
-import GraphCanvas from './GraphCanvas';
 import TextInput from '../components/inputs/TextInput';
+import AutoFitCanvas from '../components/AutoFitCanvas';
 
 import { ReactComponent as PlayIcon } from '../assets/icons/play_arrow.svg';
 import { ReactComponent as PauseIcon } from '../assets/icons/pause.svg';
 import { ReactComponent as MoreVertSVG } from '../assets/icons/more_vert.svg';
 
+import Graph from './Graph';
 import { RootState } from '../store/reducers';
 import { validateInt } from '../components/inputs/validation';
 import { DEFAULT_OPTIONS } from './Graph';
+import { Sample } from './Graph';
 
 import useOpModeLifecycle from '../hooks/useOpModeLifecycle';
 import useTelemetryStore from '../hooks/useTelemetryStore';
-import useRefCallback from '../hooks/useRefCallback';
 import useOnClickOutside from '../hooks/useOnClickOutside';
 
 type GraphViewProps = BaseViewProps & BaseViewHeadingProps;
@@ -72,8 +80,6 @@ const GraphView = ({
   }>({ isSelected: false, hasNumeric: false });
   const { keys, keyMeta } = store;
 
-  const graphRef = useRef<GraphCanvas>(null);
-
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [isMenuShowing, setIsMenuShowing] = useState(false);
@@ -85,28 +91,49 @@ const GraphView = ({
     valid: true,
   });
 
-  const lastHighestTimestamp = useRef<number>(-1);
+  const graphRef = useRef<Graph | null>();
+  const canvasRef = useCallbackRef<HTMLCanvasElement | null>(null, (node) => {
+    if (node) {
+      graphRef.current = new Graph(node, {
+        windowMs: windowMs.valid ? windowMs.value : DEFAULT_OPTIONS.windowMs,
+      });
+    }
+  });
+  const reqAnimFrameIdRef = useRef<number | null>(null);
+  const sampleQueue = useRef<Sample[][]>([]);
 
   const handleDocumentKeydown = (evt: KeyboardEvent) => {
     if (evt.code === 'Space' || evt.key === 'k') {
-      setIsPaused(!isPaused);
+      setIsPaused((paused) => !paused);
     }
   };
 
-  const [, containerRef] = useRefCallback<HTMLDivElement | null>(null, {
-    mountHook: (node) =>
-      node?.addEventListener('keydown', handleDocumentKeydown),
-    cleanupHook: (node) =>
-      node?.removeEventListener('keydown', handleDocumentKeydown),
-  });
+  const containerRef = useCallbackRef<HTMLDivElement | null>(
+    null,
+    (newNode, lastNode) => {
+      if (newNode) newNode.addEventListener('keydown', handleDocumentKeydown);
+      if (lastNode)
+        lastNode.removeEventListener('keydown', handleDocumentKeydown);
+    },
+  );
 
   // TODO: Use currentState to cache selected values if opmode hasn't changed
   const { currentState } = useOpModeLifecycle({
     INIT: {
       onEnter: () => {
-        lastHighestTimestamp.current = -1;
-
+        graphRef.current?.setFrozen(false);
         setIsPaused(false);
+      },
+    },
+    RUNNING: {
+      onEnter: () => {
+        graphRef.current?.setFrozen(false);
+        setIsPaused(false);
+      },
+    },
+    STOPPED: {
+      onEnter: () => {
+        graphRef.current?.setFrozen(true);
       },
     },
   });
@@ -141,18 +168,46 @@ const GraphView = ({
     });
   }, [dispatch, keyMeta, keys, telemetry]);
 
-  const graphSamples = telemetry
-    .filter((e) => e.timestamp > lastHighestTimestamp.current)
-    .map(({ timestamp, data }) => ({
+  useEffect(() => {
+    const graphSamples = telemetry.map(({ timestamp, data }) => ({
       timestamp,
       data: Object.keys(data)
         .filter((key) =>
           keys.filter((_, i) => keyMeta[i].isSelected).includes(key),
         )
-        .map((key) => [key, parseFloat(data[key])]),
+        .map((key) => [key, parseFloat(data[key])] as [string, number]),
     }));
 
-  lastHighestTimestamp.current = Math.max(...telemetry.map((e) => e.timestamp));
+    sampleQueue.current.push(graphSamples);
+  }, [keyMeta, keys, telemetry]);
+
+  // useEffect(() => {
+  //   if (canvasRef.current) {
+  //     graphRef.current = new Graph(canvasRef.current, {
+  //       windowMs: windowMs.valid ? windowMs.value : DEFAULT_OPTIONS.windowMs,
+  //     });
+  //     console.log('reconstruct graph');
+  //   }
+  // }, [windowMs]);
+
+  const animationFrame = useCallback(() => {
+    sampleQueue.current.forEach((e) => graphRef.current?.addSamples(e));
+    sampleQueue.current = [];
+
+    if (!isPaused) graphRef.current?.render();
+
+    // TODO: Cancel animation when not necessary
+    reqAnimFrameIdRef.current = requestAnimationFrame(animationFrame);
+  }, [isPaused]);
+
+  useEffect(() => {
+    reqAnimFrameIdRef.current = requestAnimationFrame(animationFrame);
+
+    return () => {
+      if (reqAnimFrameIdRef.current)
+        cancelAnimationFrame(reqAnimFrameIdRef.current);
+    };
+  }, [animationFrame]);
 
   const errorFlow = () => {
     if (keys.length === 0 || !keys.every((_, i) => keyMeta[i].hasNumeric)) {
@@ -172,16 +227,7 @@ const GraphView = ({
       );
     }
 
-    return (
-      <GraphCanvas
-        ref={graphRef}
-        samples={graphSamples}
-        options={{
-          windowMs: windowMs.valid ? windowMs.value : DEFAULT_OPTIONS.windowMs,
-        }}
-        paused={isPaused || currentState === 'STOPPED'}
-      />
-    );
+    return <AutoFitCanvas ref={canvasRef} />;
   };
 
   return (
@@ -196,7 +242,9 @@ const GraphView = ({
         <BaseViewIcons>
           <Transition
             show={
-              keys.length !== 0 && keys.some((_, i) => keyMeta[i].isSelected)
+              keys.length !== 0 &&
+              currentState !== 'STOPPED' &&
+              keys.some((_, i) => keyMeta[i].isSelected)
             }
             enter="transition-opacity duration-100"
             enterFrom="opacity-0"
@@ -205,24 +253,20 @@ const GraphView = ({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <BaseViewIconButton>
+            <BaseViewIconButton
+              onClick={() => setIsPaused((paused) => !paused)}
+            >
               {isPaused ? (
-                <PlayIcon
-                  className="w-6 h-6"
-                  onClick={() => setIsPaused(false)}
-                />
+                <PlayIcon className="w-6 h-6" />
               ) : (
-                <PauseIcon
-                  className="w-6 h-6"
-                  onClick={() => setIsPaused(true)}
-                />
+                <PauseIcon className="w-6 h-6" />
               )}
             </BaseViewIconButton>
           </Transition>
           <div className="relative inline-block">
             <BaseViewIconButton
               ref={menuBtnRef}
-              onClick={() => setIsMenuShowing(!isMenuShowing)}
+              onClick={() => setIsMenuShowing((showing) => !showing)}
             >
               <MoreVertSVG className="w-6 h-6" />
             </BaseViewIconButton>
@@ -290,7 +334,7 @@ const GraphView = ({
                 />
                 <div className="w-full flex justify-center border-t border-gray-100 mt-2">
                   <button
-                    onClick={() => graphRef.current?.clearGraph()}
+                    onClick={() => graphRef.current?.clear()}
                     className="text-sm bg-purple-200 border border-purple-300 rounded mt-2 px-2 py-1"
                   >
                     Clear Graph

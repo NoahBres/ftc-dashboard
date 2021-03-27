@@ -25,7 +25,7 @@ type Axis = {
   spacing: number;
 };
 
-type Sample = { data: [string, number][]; timestamp: number };
+export type Sample = { data: [string, number][]; timestamp: number };
 
 // all dimensions in this file are *CSS* pixels unless otherwise stated
 export const DEFAULT_OPTIONS: GraphOptions = {
@@ -153,7 +153,10 @@ export default class Graph {
     data: Sample['data'];
   }[] = [];
 
-  constructor(canvas: HTMLCanvasElement, options: GraphOptions) {
+  frozen = false;
+  frozenTime = -1;
+
+  constructor(canvas: HTMLCanvasElement, options: Partial<GraphOptions>) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
@@ -170,11 +173,13 @@ export default class Graph {
     this.samples = [];
   }
 
-  _getCurrentAnimTimestamp() {
+  private _getCurrentAnimTimestamp() {
+    if (this.frozen) return this.frozenTime + this.options.delayMs;
+
     return Date.now() + this.options.delayMs;
   }
 
-  _addNewSample({ timestamp, data }: Sample) {
+  private _addNewSample({ timestamp, data }: Sample) {
     const animTimestamp = (() => {
       // map the external timestamp to animation/client timestamp
       if (this.samples.length > 0) {
@@ -215,7 +220,7 @@ export default class Graph {
     });
   }
 
-  _pruneOldSamples() {
+  private _pruneOldSamples() {
     const now = this._getCurrentAnimTimestamp();
     let index = 0;
     while (
@@ -247,6 +252,12 @@ export default class Graph {
     }
 
     this._pruneOldSamples();
+  }
+
+  setFrozen(val: boolean) {
+    this.frozen = val;
+
+    if (this.frozen) this.frozenTime = Date.now();
   }
 
   getAxis() {
