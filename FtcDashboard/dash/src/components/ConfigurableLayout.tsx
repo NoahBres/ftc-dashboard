@@ -2,6 +2,7 @@ import React, { ReactElement, useState, useEffect, useRef } from 'react';
 import RGL, { WidthProvider, Layout } from 'react-grid-layout';
 import { v4 as uuidv4 } from 'uuid';
 import styled from 'styled-components';
+import { useCallbackRef } from 'use-callback-ref';
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -20,7 +21,6 @@ import ViewPicker from './ViewPicker';
 
 import useMouseIdleListener from '../hooks/useMouseIdleListener';
 import useUndoHistory from '../hooks/useUndoHistory';
-import useRefCallback from '../hooks/useRefCallback';
 
 import { ReactComponent as AddIcon } from '../assets/icons/add.svg';
 import { ReactComponent as DeleteSweepIcon } from '../assets/icons/delete_sweep.svg';
@@ -304,16 +304,11 @@ export default function ConfigurableLayout() {
   });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [
-    gridWrapperRef,
-    setGridWrapperRef,
-  ] = useRefCallback<HTMLDivElement | null>(null, {
-    mountHook: (node) => {
-      if (node !== null) resizeObserver.current.observe(node);
-    },
-    cleanupHook: () => {
+  const gridWrapperRef = useCallbackRef<HTMLDivElement | null>(null, (node) => {
+    if (resizeObserver.current) {
       resizeObserver.current.disconnect();
-    },
+      if (node) resizeObserver.current.observe(node);
+    }
   });
 
   const resizeObserver = useRef(
@@ -522,7 +517,7 @@ export default function ConfigurableLayout() {
           </p>
         </div>
       )}
-      <div ref={setGridWrapperRef}>
+      <div ref={gridWrapperRef}>
         <ReactGridLayout
           className="layout"
           cols={GRID_COL}
