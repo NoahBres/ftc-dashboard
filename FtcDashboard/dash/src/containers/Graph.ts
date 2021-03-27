@@ -261,7 +261,8 @@ export default class Graph {
 
     const latestExternalTimestamp = samples[0].timestamp;
     const latestAnimTimestamp =
-      this._getCurrentAnimTimestamp() + this.options.delayMs;
+      this._getCurrentAnimTimestamp() +
+      (this.frozen ? 0 : this.options.delayMs);
 
     samples.forEach((sample) => {
       if (sample.data.length !== 0) {

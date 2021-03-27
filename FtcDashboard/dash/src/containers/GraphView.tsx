@@ -217,11 +217,13 @@ const GraphView = ({
   }, [keyMeta]);
 
   useEffect(() => {
-    if (canvasRef.current) {
+    if (canvasRef.current && windowMs.valid) {
       graphRef.current = new Graph(canvasRef.current, {
-        windowMs: windowMs.valid ? windowMs.value : DEFAULT_OPTIONS.windowMs,
+        windowMs: windowMs.value,
       });
       backPopulateGraph();
+
+      if (currentState === 'STOPPED') graphRef.current.setFrozen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windowMs]);
@@ -232,7 +234,6 @@ const GraphView = ({
 
     if (!isPaused) graphRef.current?.render();
 
-    // TODO: Cancel animation when not necessary
     reqAnimFrameIdRef.current = requestAnimationFrame(animationFrame);
   }, [isPaused]);
 
