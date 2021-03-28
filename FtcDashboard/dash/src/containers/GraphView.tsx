@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { useSelector } from 'react-redux';
 import { useCallbackRef } from 'use-callback-ref';
+import { v4 as uuidv4 } from 'uuid';
 
 import { Transition, Switch } from '@headlessui/react';
 
@@ -27,7 +28,7 @@ import { ReactComponent as MoreVertSVG } from '../assets/icons/more_vert.svg';
 
 import Graph, { Sample } from './Graph';
 import { RootState } from '../store/reducers';
-import { validateInt } from '../components/inputs/validation';
+import { validateInt, validateDouble } from '../components/inputs/validation';
 import { DEFAULT_OPTIONS } from './Graph';
 
 import useOpModeLifecycle from '../hooks/useOpModeLifecycle';
@@ -68,6 +69,8 @@ const MenuItemSwitch = ({
   </Switch.Group>
 );
 
+const GRAPH_DELAY_MS = 250;
+
 const GraphView = ({
   isDraggable = false,
   isUnlocked = false,
@@ -85,6 +88,17 @@ const GraphView = ({
 
   const [isPaused, setIsPaused] = useState(false);
 
+  const [windowMsInputId] = useState(uuidv4());
+  const [autoScaleInputId] = useState(uuidv4());
+  const [minScaleInputId] = useState(uuidv4());
+  const [maxScaleInputId] = useState(uuidv4());
+  const [tickCountInputId] = useState(uuidv4());
+
+  const [isAutoScale, setIsAutoScale] = useState(true);
+  const [minScaleVal, setMinScaleVal] = useState({ value: -1, valid: true });
+  const [maxScaleVal, setMaxScaleVal] = useState({ value: 1, valid: true });
+  const [tickCountVal, setTickCountVal] = useState({ value: 7, valid: true });
+
   const [windowMs, setWindowMs] = useState({
     value: DEFAULT_OPTIONS.windowMs,
     valid: true,
@@ -95,7 +109,9 @@ const GraphView = ({
     if (node) {
       graphRef.current = new Graph(node, {
         windowMs: windowMs.valid ? windowMs.value : DEFAULT_OPTIONS.windowMs,
+        delayMs: GRAPH_DELAY_MS,
       });
+      setAutoScale();
     }
   });
   const reqAnimFrameIdRef = useRef<number | null>(null);
@@ -194,12 +210,16 @@ const GraphView = ({
       while (--curr >= 0 && !exit) {
         const currItem = store.store[curr];
 
-        if (maxTimestamp - currItem.timestamp <= windowMs.value) {
+        if (
+          maxTimestamp - currItem.timestamp <=
+          windowMs.value + GRAPH_DELAY_MS
+        ) {
           newSamples.push({
             timestamp: currItem.timestamp,
             data: currItem.data
               .map((e, i) => [keys[i], e] as [string, number])
-              .filter((_, i) => keyMeta[i].isSelected),
+              .filter((e, i) => keyMeta[i].isSelected),
+            // .filter((e, i) => keyMeta[i].isSelected && !isNaN(e)),
           });
         } else {
           exit = true;
@@ -208,6 +228,7 @@ const GraphView = ({
 
       sampleQueue.current = [];
       graphRef.current?.backPopulateSamples(newSamples);
+      graphRef.current?.render();
     }
   };
 
@@ -220,6 +241,7 @@ const GraphView = ({
     if (canvasRef.current && windowMs.valid) {
       graphRef.current = new Graph(canvasRef.current, {
         windowMs: windowMs.value,
+        delayMs: GRAPH_DELAY_MS,
       });
       backPopulateGraph();
 
@@ -232,10 +254,10 @@ const GraphView = ({
     sampleQueue.current.forEach((e) => graphRef.current?.addSamples(e));
     sampleQueue.current = [];
 
-    if (!isPaused) graphRef.current?.render();
+    if (!isPaused && currentState !== 'STOPPED') graphRef.current?.render();
 
     reqAnimFrameIdRef.current = requestAnimationFrame(animationFrame);
-  }, [isPaused]);
+  }, [currentState, isPaused]);
 
   useEffect(() => {
     reqAnimFrameIdRef.current = requestAnimationFrame(animationFrame);
@@ -245,6 +267,45 @@ const GraphView = ({
         cancelAnimationFrame(reqAnimFrameIdRef.current);
     };
   }, [animationFrame]);
+
+  const minMaxLinkedValid =
+    minScaleVal.value !== maxScaleVal.value &&
+    minScaleVal.value < maxScaleVal.value;
+
+  const setAutoScale = useCallback(() => {
+    if (isAutoScale) {
+      graphRef.current?.setAutoScale({
+        isAutoScale: true,
+        minScale: 0,
+        maxScale: 0,
+        tickCount: 0,
+      });
+    } else if (
+      !isAutoScale &&
+      maxScaleVal.valid &&
+      minScaleVal.valid &&
+      tickCountVal.valid &&
+      minMaxLinkedValid
+    ) {
+      graphRef.current?.setAutoScale({
+        isAutoScale: false,
+        minScale: minScaleVal.value,
+        maxScale: maxScaleVal.value,
+        tickCount: tickCountVal.value,
+      });
+    }
+  }, [isAutoScale, maxScaleVal, minScaleVal, minMaxLinkedValid, tickCountVal]);
+
+  useEffect(() => {
+    setAutoScale();
+  }, [
+    isAutoScale,
+    maxScaleVal,
+    minMaxLinkedValid,
+    minScaleVal,
+    setAutoScale,
+    tickCountVal,
+  ]);
 
   const errorFlow = () => {
     if (keys.length === 0 || !keys.every((_, i) => keyMeta[i].hasNumeric)) {
@@ -321,7 +382,7 @@ const GraphView = ({
                 className="absolute right-0 mt-2 py-2 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg outline-none"
                 style={{ zIndex: 99 }}
               >
-                <p className="text-sm leading-5 border-b border-gray-100 pb-1 mb-1 mx-3 text-gray-500">
+                <p className="text-sm leading-5 border-b border-gray-100 pb-1 mb-1 px-3 text-gray-500">
                   Toggle Items
                 </p>
                 <div className="mb-3 mt-2 mx-3">
@@ -350,8 +411,14 @@ const GraphView = ({
                     No number-value received
                   </p>
                 )}
-                <div className="text-sm mx-3">Window (ms):</div>
+                <label
+                  className="text-sm mx-3 mb-1"
+                  htmlFor={`window-ms-input-${windowMsInputId}`}
+                >
+                  Window (ms):
+                </label>
                 <TextInput
+                  id={`window-ms-input-${windowMsInputId}`}
                   className="text-sm mx-3"
                   value={windowMs.value}
                   valid={windowMs.valid}
@@ -369,13 +436,111 @@ const GraphView = ({
                     })
                   }
                 />
-                <div className="w-full flex justify-center border-t border-gray-100 mt-2">
-                  <button
-                    onClick={() => graphRef.current?.clear()}
-                    className="text-sm bg-purple-200 border border-purple-300 rounded mt-2 px-2 py-1"
-                  >
-                    Clear Graph
-                  </button>
+                <div
+                  className="border-t border-gray-100 mt-2 px-3 pt-1"
+                  style={{ minWidth: '16em' }}
+                >
+                  <div className="flex items-center">
+                    <label
+                      className="text-sm inline-block mr-2"
+                      htmlFor={`autoscale-input-${autoScaleInputId}`}
+                    >
+                      Autoscale:
+                    </label>
+                    <input
+                      type="checkbox"
+                      className="rounded mr-2"
+                      id={`autoscale-input-${autoScaleInputId}`}
+                      checked={isAutoScale}
+                      onChange={() => setIsAutoScale((prev) => !prev)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mb-1 mt-1">
+                    <div>
+                      <label
+                        className={`text-sm ${
+                          isAutoScale ? 'text-gray-400' : ''
+                        } transition-colors`}
+                        htmlFor={`min-scale-input-${minScaleInputId}`}
+                      >
+                        Min-Y:
+                      </label>
+                      <TextInput
+                        id={`min-scale-input-${minScaleInputId}`}
+                        className={`text-xs w-full px-0 pl-2 ${
+                          isAutoScale ? 'text-gray-400' : ''
+                        } transition-colors`}
+                        value={minScaleVal.value}
+                        valid={minScaleVal.valid && minMaxLinkedValid}
+                        validate={validateDouble}
+                        placeholder="Min-Y"
+                        onChange={({
+                          value,
+                          valid,
+                        }: {
+                          value: number;
+                          valid: boolean;
+                        }) => setMinScaleVal({ value, valid })}
+                        disabled={isAutoScale}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`text-sm ${
+                          isAutoScale ? 'text-gray-400' : ''
+                        } transition-colors`}
+                        htmlFor={`min-scale-input-${maxScaleInputId}`}
+                      >
+                        Max-Y:
+                      </label>
+                      <TextInput
+                        id={`min-scale-input-${maxScaleInputId}`}
+                        className={`text-xs w-full px-0 pl-2 ${
+                          isAutoScale ? 'text-gray-400' : ''
+                        } transition-colors`}
+                        value={maxScaleVal.value}
+                        valid={maxScaleVal.valid && minMaxLinkedValid}
+                        validate={validateDouble}
+                        placeholder="Max-Y"
+                        onChange={({
+                          value,
+                          valid,
+                        }: {
+                          value: number;
+                          valid: boolean;
+                        }) => setMaxScaleVal({ value, valid })}
+                        disabled={isAutoScale}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`text-sm ${
+                          isAutoScale ? 'text-gray-400' : ''
+                        } transition-colors`}
+                        htmlFor={`tick-count-input-${tickCountInputId}`}
+                      >
+                        Ticks:
+                      </label>
+                      <TextInput
+                        id={`tick-count-input-${tickCountInputId}`}
+                        className={`text-xs w-full px-0 pl-2 ${
+                          isAutoScale ? 'text-gray-400' : ''
+                        } transition-colors`}
+                        value={tickCountVal.value}
+                        valid={tickCountVal.valid}
+                        validate={validateInt}
+                        placeholder="Ticks"
+                        onChange={({
+                          value,
+                          valid,
+                        }: {
+                          value: number;
+                          valid: boolean;
+                        }) => setTickCountVal({ value, valid })}
+                        disabled={isAutoScale}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </Transition>

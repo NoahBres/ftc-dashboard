@@ -45,13 +45,16 @@ class TextInput extends React.Component {
           !this.props.valid
             ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
             : ''
-        } ${this.props.className}`}
+        } transition-colors duration-100 ${this.props.className}`}
         ref={this.inputRef}
         type="text"
         size={15}
         value={this.state.value}
         onChange={this.handleChange}
         onKeyDown={this.handleKeyDown}
+        placeholder={this.props.placeholder}
+        id={this.props.id}
+        disabled={this.props.disabled}
       />
     );
   }
@@ -64,6 +67,9 @@ TextInput.propTypes = {
   onChange: PropTypes.func.isRequired,
   onSave: PropTypes.func,
   className: PropTypes.string,
+  placeholder: PropTypes.string,
+  id: PropTypes.string,
+  disabled: PropTypes.bool,
 };
 
 export default TextInput;

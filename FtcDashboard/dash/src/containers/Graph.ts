@@ -47,6 +47,7 @@ function niceNum(range: number, round: boolean) {
   const exponent = Math.floor(Math.log10(range));
   const fraction = range / Math.pow(10, exponent);
   let niceFraction;
+
   if (round) {
     if (fraction < 1.5) {
       niceFraction = 1;
@@ -66,6 +67,7 @@ function niceNum(range: number, round: boolean) {
   } else {
     niceFraction = 10;
   }
+
   return niceFraction * Math.pow(10, exponent);
 }
 
@@ -75,6 +77,7 @@ function getAxisScaling(min: number, max: number, maxTicks: number) {
   const tickSpacing = niceNum(range / (maxTicks - 1), true);
   const niceMin = Math.floor(min / tickSpacing) * tickSpacing;
   const niceMax = (Math.floor(max / tickSpacing) + 1) * tickSpacing;
+
   return {
     min: niceMin,
     max: niceMax,
@@ -155,6 +158,13 @@ export default class Graph {
 
   frozen = false;
   frozenTime = -1;
+
+  scale = {
+    isAutoScale: true,
+    minScale: 0,
+    maxScale: 0,
+    tickCount: 0,
+  };
 
   constructor(canvas: HTMLCanvasElement, options: Partial<GraphOptions>) {
     this.canvas = canvas;
@@ -261,8 +271,7 @@ export default class Graph {
 
     const latestExternalTimestamp = samples[0].timestamp;
     const latestAnimTimestamp =
-      this._getCurrentAnimTimestamp() +
-      (this.frozen ? 0 : this.options.delayMs);
+      this._getCurrentAnimTimestamp() + this.options.delayMs;
 
     samples.forEach((sample) => {
       if (sample.data.length !== 0) {
@@ -302,15 +311,38 @@ export default class Graph {
     if (this.frozen) this.frozenTime = Date.now();
   }
 
-  getAxis() {
-    const values = this.samples.reduce<number[]>(
-      (acc, curr) => [...acc, ...curr.data.map((e) => e[1])],
-      [],
-    );
+  setAutoScale(scaleState: {
+    isAutoScale: boolean;
+    minScale: number;
+    maxScale: number;
+    tickCount: number;
+  }) {
+    this.scale = scaleState;
+  }
 
-    // get y-axis scaling
-    const min = Math.min(...values);
-    const max = Math.max(...values);
+  getAxis() {
+    let min;
+    let max;
+
+    if (this.scale.isAutoScale) {
+      const values = this.samples.reduce<number[]>(
+        (acc, curr) => [...acc, ...curr.data.map((e) => e[1])],
+        [],
+      );
+
+      // get y-axis scaling
+      min = Math.min(...values);
+      max = Math.max(...values);
+    } else {
+      min = this.scale.minScale;
+      max = this.scale.maxScale;
+
+      return {
+        min,
+        max,
+        spacing: (max - min) / this.scale.tickCount,
+      };
+    }
 
     if (Math.abs(min - max) < 1e-6) {
       return getAxisScaling(min - 1, max + 1, this.options.maxTicks);
